@@ -35,7 +35,7 @@ Each object has: what it is, whether it is professional or personal, how it beha
 | Object | Type | Behavior | Reveals | Status |
 |---|---|---|---|---|
 | Ice axe | Personal (mountaineering) | Clickable. Animates into view, then walks through the mountaineering experience in a creative way. | Mountaineering experience | Stated. Details open. |
-| Posters (bought prints on your wall) | Decoration only | Decoration. Never presented as your design work. | Personal taste only | Stated. Photos in assets/. |
+| Posters (your designs, made in the style of other posters) | Professional (design work) | Click for a short brief. | Design work | Stated. Files in assets/. |
 | Shirt design | Professional | 3D rendering. Location open (desk or inside the Mac). | Design work | Stated. |
 
 ### Desk
@@ -111,3 +111,4 @@ Each phase ends with something you can open and check. We'll move to the next ph
 - Equal visual weight for all objects. No single hero object. Every object is 3D in place and floats out on click to show its full form. Build phase 3 changed from one object to a desk prototype of 2 to 3 objects.
 - Posters on the wall are bought prints, not Atticus's designs. Changed to decoration only (Nov 26, 2026).
 - Landing changed (Nov 26, 2026): the hero is the landing scene. A short click-to-enter title card comes first, then the hero asks the visitor's name and greets them in place. Replaces the separate calm landing. Palette Pine (#2F5D46 on #EEEDE5), Big Shoulders Display and DM Mono.
+- Correction (Nov 27, 2026): the posters are Atticus's own designs, made in the style of other posters, not bought prints. Back to design work, fine to show on the site.

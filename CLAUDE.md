@@ -23,7 +23,7 @@ Read `portfolio-plan.md` first. It is the source of truth for scope, objects, an
 - Never invent facts, metrics, client names, dates, or credentials. If something is missing, ask.
 - Nothing from a draft content file goes on the public URL until Atticus approves it.
 - The repo is public. Draft content, original photos, and poster files stay out of git (see `.gitignore`) until Atticus approves them.
-- Posters on the wall are bought prints, not Atticus's design work. They are decoration only and never presented as his work.
+- Posters on the wall are Atticus's own designs, made in the style of other posters. They are design work and fine to show.
 - Spotify connection is deferred to a later phase.
 
 ## 3D models

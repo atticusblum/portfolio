@@ -16,3 +16,5 @@ content/*.md
 design-options.html
 design-hero.html
 .claude/
+review/
+__pycache__/
