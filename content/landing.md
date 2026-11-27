@@ -16,6 +16,11 @@ hero:
   name: I'm Atticus.
   tagline: "[Placeholder] One line about what I do."
   scrollCue: Scroll to my desk
+map:
+  summit: Mt. Atticus
+  north: N
+  contours: ["5000", "6000"]
+  scale: ["0", "1/2", "1 mi"]
 menu:
   - label: Work
     href: "#work"

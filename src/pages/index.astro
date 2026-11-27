@@ -3,13 +3,15 @@ import Base from '../layouts/Base.astro';
 import TitleCard from '../components/TitleCard.astro';
 import SiteMenu from '../components/SiteMenu.astro';
 import Hero from '../components/Hero.astro';
+import CursorTrail from '../components/CursorTrail.astro';
 import { frontmatter as copy } from '../../content/landing.md';
 ---
 <Base title={copy.titleCard.name}>
   <TitleCard {...copy.titleCard} />
+  <CursorTrail />
   <SiteMenu name={copy.titleCard.name} items={copy.menu} />
   <main>
-    <Hero greeting={copy.greeting} hero={copy.hero} />
+    <Hero greeting={copy.greeting} hero={copy.hero} map={copy.map} />
 
     <!-- Stub stations. Phase 3 replaces #desk with the 3D desk and wall scene. -->
     <section id="desk" class="stub" data-station="desk"><p>{copy.stubs.desk}</p></section>

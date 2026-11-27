@@ -12,6 +12,10 @@
   - Reduced motion: no title card, no draw-in, no smooth scroll.
   - Palette Pine, Big Shoulders Display + DM Mono, self-hosted.
   - Checked at 1440x900, 1920x1080, and 1512x744.
+- Phase 2 additions (committed, not pushed):
+  - Topo map behind the photo: index contours with elevation labels set into line gaps, steep right face, a knoll, a stream, faint map grid, dashed switchback route up to a "Mt. Atticus" summit flag, north arrow, scale bar. Map fades out under the text column.
+  - Mouse parallax on the hero: map, photo, route, and words move at different depths. Off with reduced motion.
+  - Cursor trail: dashed trail line that follows the mouse and fades in 0.7s. Paper color on the title card, Pine elsewhere. Off with reduced motion and on touch.
 
 ## Decisions (Nov 26, 2026)
 - Repo `atticusblum/portfolio` (the `atticusblum.github.io` repo is an older site, left alone).
@@ -30,6 +34,7 @@
 
 ## Placeholders still in use
 - Title card line and hero tagline (`content/landing.md`).
+- Map labels in `content/landing.md` (elevations 5000/6000, scale 1/2 and 1 mi) are decoration, not real data.
 - Stub sections: desk, work, personal, contact.
 - Favicon (grey square).
 - `content/site.md` is unused since Phase 2; can be removed with OK.

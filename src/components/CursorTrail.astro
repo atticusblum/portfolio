@@ -1,0 +1,70 @@
+<canvas class="trail" aria-hidden="true"></canvas>
+
+<style>
+  .trail { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 60; pointer-events: none; }
+  :global(html.reduced) .trail { display: none; }
+</style>
+
+<script>
+  // A dashed hiking-trail line that follows the cursor and fades out behind it.
+  const LIFE = 700; // ms a point stays on the trail
+  const canvas = document.querySelector<HTMLCanvasElement>('canvas.trail')!;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const fine = matchMedia('(pointer: fine)');
+
+  if (!reduced.matches && fine.matches) {
+    const ctx = canvas.getContext('2d')!;
+    const html = document.documentElement;
+    const pts: { x: number; y: number; t: number }[] = [];
+    let raf = 0;
+    let color = '';
+
+    const size = () => {
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      canvas.width = innerWidth * dpr;
+      canvas.height = innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    size();
+    addEventListener('resize', size);
+
+    const tokens = getComputedStyle(html);
+    const accent = tokens.getPropertyValue('--color-accent').trim();
+    const paper = tokens.getPropertyValue('--color-bg').trim();
+
+    const frame = () => {
+      const now = performance.now();
+      while (pts.length && now - pts[0].t > LIFE) pts.shift();
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      // On the green title card the trail switches to paper color.
+      color = html.classList.contains('card-open') ? paper : accent;
+      ctx.strokeStyle = color;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([5, 7]);
+      let dist = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const life = 1 - (now - b.t) / LIFE;
+        ctx.globalAlpha = Math.max(0, life) * 0.9;
+        ctx.lineWidth = 0.8 + life * 2.2;
+        ctx.lineDashOffset = -dist;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        dist += Math.hypot(b.x - a.x, b.y - a.y);
+      }
+      ctx.globalAlpha = 1;
+      raf = pts.length > 1 ? requestAnimationFrame(frame) : 0;
+      if (!raf) ctx.clearRect(0, 0, innerWidth, innerHeight);
+    };
+
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      const coalesced = e.getCoalescedEvents?.();
+      const events = coalesced && coalesced.length ? coalesced : [e];
+      for (const ev of events) pts.push({ x: ev.clientX, y: ev.clientY, t: performance.now() });
+      if (!raf) raf = requestAnimationFrame(frame);
+    }, { passive: true });
+  }
+</script>

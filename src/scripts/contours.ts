@@ -9,6 +9,13 @@ export function rng(seed: number) {
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
 }
 
+/** One point on a contour ring at angle a (radians). */
+export function ringPoint(cx: number, cy: number, rx: number, ry: number, shape: number[], a: number): Pt {
+  let r = 1;
+  for (let k = 0; k < shape.length; k += 2) r += shape[k] * Math.sin((k / 2 + 2) * a + shape[k + 1]);
+  return [cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r];
+}
+
 /** Smooth closed-ish loop: a contour ring with a small pen-lift gap. */
 export function ring(
   cx: number, cy: number, rx: number, ry: number,
@@ -16,13 +23,55 @@ export function ring(
   start = rand() * Math.PI * 2, sweep = Math.PI * 2 - 0.18 - rand() * 0.2, n = 180,
 ): Pt[] {
   const pts: Pt[] = [];
-  for (let i = 0; i <= n; i++) {
-    const a = start + (sweep * i) / n;
-    let r = 1;
-    for (let k = 0; k < shape.length; k += 2) r += shape[k] * Math.sin((k / 2 + 2) * a + shape[k + 1]);
-    pts.push([cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r]);
-  }
+  for (let i = 0; i <= n; i++) pts.push(ringPoint(cx, cy, rx, ry, shape, start + (sweep * i) / n));
   return pts;
+}
+
+/** Splits a densified line into short pieces: a dashed trail. */
+export function dashes(pts: Pt[], dash: number, gap: number): Pt[][] {
+  const out: Pt[][] = [];
+  let cur: Pt[] = [pts[0]];
+  let run = 0;
+  let on = true;
+  for (let i = 1; i < pts.length; i++) {
+    run += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (on) cur.push(pts[i]);
+    if (run >= (on ? dash : gap)) {
+      if (on && cur.length > 1) out.push(cur);
+      on = !on;
+      run = 0;
+      cur = [pts[i]];
+    }
+  }
+  if (on && cur.length > 1) out.push(cur);
+  return out;
+}
+
+/** Resamples a polyline so points are about `step` apart. */
+export function densify(pts: Pt[], step: number): Pt[] {
+  const out: Pt[] = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / step));
+    for (let k = 1; k <= n; k++) out.push([x0 + ((x1 - x0) * k) / n, y0 + ((y1 - y0) * k) / n]);
+  }
+  return out;
+}
+
+/** Catmull-Rom smoothing through hand-placed points. */
+export function smooth(points: Pt[], perSeg = 10): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+    for (let s = 0; s < perSeg; s++) {
+      const t = s / perSeg, t2 = t * t, t3 = t2 * t;
+      const f = (a: number, b: number, c: number, d: number) =>
+        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  out.push(points[points.length - 1]);
+  return out;
 }
 
 /** Brush outline around a centerline: tapered ends, wobbling width. */

@@ -3,8 +3,9 @@ import cutout from '../assets/atticus-cutout.webp';
 interface Props {
   greeting: { hello: string; fallback: string; prompt: string; hint: string; skip: string; note: string };
   hero: { name: string; tagline: string; scrollCue: string };
+  map: { summit: string; north: string; contours: string[]; scale: string[] };
 }
-const { greeting, hero } = Astro.props;
+const { greeting, hero, map } = Astro.props;
 ---
 <section id="landing" class="landing" data-station="landing">
   <div class="stage">
@@ -15,14 +16,26 @@ const { greeting, hero } = Astro.props;
           <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 2.05" result="holes" />
           <feComposite in="SourceGraphic" in2="holes" operator="in" />
         </filter>
+        <linearGradient id="map-fade-grad" gradientUnits="userSpaceOnUse" x1="33" y1="0" x2="48" y2="0">
+          <stop offset="0" stop-color="#fff" stop-opacity="0" />
+          <stop offset="1" stop-color="#fff" />
+        </linearGradient>
+        <mask id="map-fade" maskUnits="userSpaceOnUse" x="-10" y="-10" width="120" height="76">
+          <rect x="-10" y="-10" width="120" height="76" fill="url(#map-fade-grad)" />
+        </mask>
       </defs>
-      <g class="strokes" filter="url(#dry-hero)"></g>
+      <g mask="url(#map-fade)">
+        <g class="grid"></g>
+        <g class="strokes" filter="url(#dry-hero)"></g>
+        <g class="labels"></g>
+      </g>
     </svg>
 
     <img class="photo" src={cutout.src} width={cutout.width} height={cutout.height} alt="Atticus Blum" />
 
-    <svg class="lines front" viewBox="0 0 100 56" aria-hidden="true">
+    <svg class="lines front" viewBox="0 0 100 56" aria-hidden="true" data-map={JSON.stringify(map)}>
       <g class="strokes" filter="url(#dry-hero)"></g>
+      <g class="labels"></g>
     </svg>
 
     <p class="word hello">{greeting.hello}</p>
@@ -70,8 +83,16 @@ const { greeting, hero } = Astro.props;
   .lines :global(path) { fill: var(--color-accent); }
   .back { z-index: 1; }
   .front { z-index: 3; }
+  .lines :global(.grid path) { fill: none; stroke: var(--color-accent); stroke-width: 0.07; opacity: 0.28; }
+  .lines :global(.labels text) {
+    fill: var(--color-accent); font-family: var(--font-body); font-weight: 500; font-size: 1px; letter-spacing: 0.06px;
+    opacity: 0; transition: opacity 0.8s var(--ease-out);
+  }
+  .lines:global(.drawing) :global(.labels text) { opacity: 1; transition-delay: var(--d, 1.6s); }
+  :global(html.reduced) .lines :global(.labels text) { opacity: 1; transition: none; }
+  .back, .front, .photo, .hello, .name, .me, .tag, .cue { will-change: transform; }
 
-  .photo { position: absolute; left: 55cqw; bottom: 0; height: 47cqw; width: auto; z-index: 2; user-select: none; }
+  .photo { position: absolute; left: 54.6cqw; bottom: -1.6cqw; height: 48.6cqw; width: auto; z-index: 2; user-select: none; }
 
   .word {
     margin: 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase;
@@ -121,7 +142,7 @@ const { greeting, hero } = Astro.props;
 </style>
 
 <script>
-  import { rng, ring, paint, sketch } from '../scripts/contours';
+  import { rng, ring, ringPoint, paint, sketch, smooth, densify, dashes } from '../scripts/contours';
   import { goTo, initStations } from '../scripts/stations';
 
   type Pt = [number, number];
@@ -129,39 +150,95 @@ const { greeting, hero } = Astro.props;
   const front = document.querySelector<SVGGElement>('.landing .front .strokes')!;
   const svgs = [...document.querySelectorAll<SVGSVGElement>('.landing .lines')];
 
-  // Topo contours centered on the photo: Atticus as the summit.
+  // A small topo map, hand-drawn. Atticus stands on the summit.
+  const backLabels = document.querySelector<SVGGElement>('.landing .back .labels')!;
+  const frontLabels = document.querySelector<SVGGElement>('.landing .front .labels')!;
+  const grid = document.querySelector<SVGGElement>('.landing .back .grid')!;
+  const map = JSON.parse(document.querySelector<SVGSVGElement>('.landing .front')!.dataset.map!);
+  const NS = 'http://www.w3.org/2000/svg';
   const R = rng(11);
+
+  const label = (g: SVGGElement, text: string, x: number, y: number, opts: { rot?: number; size?: number; anchor?: string; delay?: number } = {}) => {
+    const t = document.createElementNS(NS, 'text');
+    t.textContent = text;
+    t.setAttribute('x', x.toFixed(2));
+    t.setAttribute('y', y.toFixed(2));
+    t.setAttribute('text-anchor', opts.anchor ?? 'middle');
+    t.setAttribute('dominant-baseline', 'central');
+    if (opts.size) t.style.fontSize = `${opts.size}px`;
+    if (opts.rot) t.setAttribute('transform', `rotate(${opts.rot.toFixed(1)} ${x.toFixed(2)} ${y.toFixed(2)})`);
+    if (opts.delay != null) t.style.setProperty('--d', `${opts.delay}s`);
+    g.appendChild(t);
+  };
+
+  // Faint map grid.
+  grid.innerHTML = [50, 75].map((x) => `<path d="M${x} -2 V58" />`).join('') + [14, 42].map((y) => `<path d="M30 ${y} H102" />`).join('');
+
+  // Main massif: tight contours on the right (a steep face), wider on the left.
   const shape = [0.085, R() * 6, 0.06, R() * 6, 0.035, R() * 6];
-  const cx = 69, cy = 30;
-  const shapeAt = (i: number) => shape.map((v, k) => (k % 2 ? v + i * 0.11 : v * (1 + i * 0.1)));
-  const rings = Array.from({ length: 6 }, (_, i) => {
-    const rx = 11 + i * 3.4;
-    return { pts: ring(cx - i * 0.55, cy + i * 0.4, rx, rx * 0.76, shapeAt(i), R), width: 0.4 - i * 0.02, delay: 0.15 + i * 0.12 };
+  const shapeAt = (i: number) => shape.map((v, k) => (k % 2 ? v + i * 0.09 : v * (1 + i * 0.08)));
+  const geo = (i: number) => ({ cx: 69 - i * 0.62, cy: 28 + i * 0.42, rx: 6.5 + i * 2.15 });
+  const INDEX: Record<number, { at: number; text: string }> = {
+    4: { at: Math.PI + 0.3, text: map.contours[1] },
+    9: { at: -Math.PI / 2 - 0.55, text: map.contours[0] },
+  };
+  const rings = Array.from({ length: 11 }, (_, i) => {
+    const { cx, cy, rx } = geo(i);
+    const sh = shapeAt(i);
+    const idx = INDEX[i];
+    if (!idx) return { pts: ring(cx, cy, rx, rx * 0.78, sh, R), width: 0.24, delay: 0.15 + i * 0.08 };
+    // Index contour: heavier line, broken where its elevation is written.
+    const gap = 1.7 / rx;
+    const [lx, ly] = ringPoint(cx, cy, rx, rx * 0.78, sh, idx.at);
+    const [ax, ay] = ringPoint(cx, cy, rx, rx * 0.78, sh, idx.at - 0.02);
+    const [bx, by] = ringPoint(cx, cy, rx, rx * 0.78, sh, idx.at + 0.02);
+    let rot = (Math.atan2(by - ay, bx - ax) * 180) / Math.PI;
+    if (rot > 90) rot -= 180;
+    if (rot < -90) rot += 180;
+    label(backLabels, idx.text, lx, ly, { rot, size: 1.05 });
+    return { pts: ring(cx, cy, rx, rx * 0.78, sh, R, idx.at + gap, Math.PI * 2 - gap * 2, 200), width: 0.46, delay: 0.15 + i * 0.08 };
   });
-  paint(back, rings, R);
 
-  // A few contour arcs pass in front of the photo for depth.
-  const arcs = [
-    { i: 1, start: Math.PI - 0.45, sweep: 0.8 },
-    { i: 2, start: -0.35, sweep: 0.75 },
-  ].map(({ i, start, sweep }) => {
-    const rx = 11 + i * 3.4;
-    return { pts: ring(cx - i * 0.55, cy + i * 0.4, rx, rx * 0.76, shapeAt(i), rng(11 + i), start, sweep, 40), width: 0.34, delay: 0.5 + i * 0.12 };
+  // A smaller knoll and the stream draining the saddle between them.
+  const knollShape = [0.1, R() * 6, 0.05, R() * 6];
+  const knoll = [2.2, 4, 5.8].map((rx, j) => ({
+    pts: ring(92 - j * 0.3, 41 + j * 0.2, rx, rx * 0.8, knollShape.map((v, k) => (k % 2 ? v + j * 0.2 : v)), R),
+    width: 0.22, delay: 1.0 + j * 0.1,
+  }));
+  const stream = { pts: smooth([[79.5, 33], [81.6, 37.5], [80.8, 42], [83.6, 46.5], [86.4, 50.5], [85.4, 57]], 14), width: 0.2, delay: 1.2 };
+  paint(back, [...rings, ...knoll, stream], R);
+
+  // Contour arcs that cross in front of the photo, for depth.
+  const arcs = [[2, Math.PI - 0.42], [3, -0.38]].map(([i, start]) => {
+    const { cx, cy, rx } = geo(i);
+    return { pts: ring(cx, cy, rx, rx * 0.78, shapeAt(i), rng(11 + i), start, 0.8, 40), width: 0.3, delay: 0.5 + i * 0.1 };
   });
 
-  // Summit doodle beside the head: a peak with a small flag, plus a compass star.
+  // Dashed switchback route up to the summit flag, drawn in climbing order.
+  const route = smooth([[47.5, 57], [51.6, 52.4], [47.9, 48.6], [52.8, 44.6], [49.7, 40.4], [54.2, 36.2], [51.6, 31.6], [55.3, 27], [53.8, 21.6], [56.7, 16.8], [58.4, 11.8], [59.7, 7.2]], 12);
+  const steps = dashes(densify(route, 0.12), 0.85, 0.6).map((pts, k) => ({ pts, width: 0.3, delay: 1.3 + k * 0.025 }));
+
+  // Summit: hand-drawn peak and flag, named on the map.
   const peak: Pt[] = [[53.2, 14.6], [56.0, 9.6], [57.4, 11.4], [59.8, 6.4], [63.2, 13.4]];
   const flag: Pt[] = [[59.8, 6.4], [59.8, 2.6], [62.4, 3.4], [59.8, 4.3]];
-  const star = (x: number, y: number, r: number): Pt[][] => [
-    [[x, y - r], [x, y + r]], [[x - r, y], [x + r, y]],
-    [[x - r * 0.62, y - r * 0.62], [x + r * 0.62, y + r * 0.62]], [[x + r * 0.62, y - r * 0.62], [x - r * 0.62, y + r * 0.62]],
-  ];
-  const doodles = [
-    { pts: sketch(peak, R), width: 0.42, delay: 1.0 },
-    { pts: sketch(flag, R, 0.05, 4), width: 0.32, delay: 1.3 },
-    ...star(84.5, 9.5, 2.0).map((pts, j) => ({ pts: sketch(pts, R, 0.04, 4), width: 0.32, delay: 1.4 + j * 0.06 })),
-  ];
-  paint(front, [...arcs, ...doodles], R);
+  const doneAt = 1.3 + steps.length * 0.025;
+  label(frontLabels, map.summit, 63.4, 3.6, { anchor: 'start', size: 1.0, delay: doneAt + 0.3 });
+
+  // North arrow and scale bar.
+  const north: Pt[][] = [[[88.6, 12.2], [88.6, 6.2]], [[87.4, 7.8], [88.6, 6.0], [89.8, 7.8]]];
+  label(frontLabels, map.north, 88.6, 4.6, { size: 1.1, delay: 1.9 });
+  const sx = 88, sy = 53;
+  const scale: Pt[][] = [[[sx, sy], [sx + 10, sy]], [[sx, sy - 0.6], [sx, sy + 0.6]], [[sx + 5, sy - 0.6], [sx + 5, sy + 0.6]], [[sx + 10, sy - 0.6], [sx + 10, sy + 0.6]]];
+  map.scale.forEach((t: string, j: number) => label(frontLabels, t, sx + j * 5, sy + 1.7, { size: 0.85, delay: 1.9 }));
+
+  paint(front, [
+    ...arcs,
+    ...steps,
+    { pts: sketch(peak, R), width: 0.42, delay: 0.9 },
+    { pts: sketch(flag, R, 0.05, 4), width: 0.32, delay: doneAt },
+    ...north.map((pts, j) => ({ pts: sketch(pts, R, 0.03, 5), width: 0.28, delay: 1.7 + j * 0.1 })),
+    ...scale.map((pts, j) => ({ pts: sketch(pts, R, 0.03, 5), width: j ? 0.2 : 0.3, delay: 1.7 + j * 0.05 })),
+  ], R);
 
   const draw = () => svgs.forEach((s) => { s.classList.remove('drawing'); void s.getBoundingClientRect(); s.classList.add('drawing'); });
 
@@ -207,7 +284,33 @@ const { greeting, hero } = Astro.props;
   document.querySelectorAll<HTMLElement>('[data-goto]').forEach((el) => el.addEventListener('click', () => goTo(el.dataset.goto!)));
   initStations();
 
-  const start = () => { draw(); input.focus({ preventScroll: true }); };
+  // Mouse parallax: each layer drifts by its own depth. Map back, photo, route front, words against it.
+  const depth: [string, number][] = [
+    ['.back', 0.45], ['.photo', 0.9], ['.front', 1.35],
+    ['.hello', -0.3], ['.name', -0.3], ['.me', -0.22], ['.tag', -0.18], ['.cue', -0.18],
+  ];
+  const layers = depth.map(([sel, d]) => [document.querySelector<HTMLElement>(`.landing ${sel}`)!, d] as const);
+  const landing = document.querySelector<HTMLElement>('.landing')!;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let tx = 0, ty = 0, px = 0, py = 0, raf = 0;
+  const tick = () => {
+    px += (tx - px) * 0.075;
+    py += (ty - py) * 0.075;
+    const amp = stage.clientWidth * 0.017;
+    for (const [el, d] of layers) el.style.transform = `translate3d(${(px * d * amp).toFixed(2)}px, ${(py * d * amp * 0.6).toFixed(2)}px, 0)`;
+    raf = Math.abs(tx - px) + Math.abs(ty - py) > 0.0005 ? requestAnimationFrame(tick) : 0;
+  };
+  const aim = (x: number, y: number) => {
+    if (reducedMotion.matches) return;
+    tx = x; ty = y;
+    if (!raf) raf = requestAnimationFrame(tick);
+  };
+  const parallax = () => {
+    landing.addEventListener('pointermove', (e) => aim((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1));
+    landing.addEventListener('pointerleave', () => aim(0, 0));
+  };
+
+  const start = () => { draw(); parallax(); input.focus({ preventScroll: true }); };
   if (document.documentElement.classList.contains('card-open')) window.addEventListener('intro:done', start, { once: true });
   else start();
 </script>
