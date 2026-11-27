@@ -1,0 +1,213 @@
+---
+import cutout from '../assets/atticus-cutout.webp';
+interface Props {
+  greeting: { hello: string; fallback: string; prompt: string; hint: string; skip: string; note: string };
+  hero: { name: string; tagline: string; scrollCue: string };
+}
+const { greeting, hero } = Astro.props;
+---
+<section id="landing" class="landing" data-station="landing">
+  <div class="stage">
+    <svg class="lines back" viewBox="0 0 100 56" aria-hidden="true">
+      <defs>
+        <filter id="dry-hero" x="-2%" y="-2%" width="104%" height="104%">
+          <feTurbulence type="fractalNoise" baseFrequency="3 1.1" numOctaves="2" seed="3" result="n" />
+          <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 2.05" result="holes" />
+          <feComposite in="SourceGraphic" in2="holes" operator="in" />
+        </filter>
+      </defs>
+      <g class="strokes" filter="url(#dry-hero)"></g>
+    </svg>
+
+    <img class="photo" src={cutout.src} width={cutout.width} height={cutout.height} alt="Atticus Blum" />
+
+    <svg class="lines front" viewBox="0 0 100 56" aria-hidden="true">
+      <g class="strokes" filter="url(#dry-hero)"></g>
+    </svg>
+
+    <p class="word hello">{greeting.hello}</p>
+
+    <div class="name" data-fallback={greeting.fallback}>
+      <form class="ask">
+        <label class="field">
+          <span class="br" aria-hidden="true">{'{{'}</span>
+          <input name="first" placeholder={greeting.prompt} aria-label="Your first name"
+            autocomplete="given-name" spellcheck="false" maxlength="30" size={greeting.prompt.length} />
+          <span class="br" aria-hidden="true">{'}}'}</span>
+        </label>
+        <p class="hint">{greeting.hint} <button type="button" class="skip">{greeting.skip}</button></p>
+      </form>
+      <div class="said" hidden>
+        <button type="button" class="word typed" title="Change name"></button>
+        <span class="you" aria-hidden="true">
+          <svg viewBox="0 0 60 40"><path d="M56 6 C 44 4, 30 10, 22 22 S 12 34, 6 33" /><path d="M13 27 L5 33 L14 37" /></svg>
+          <span>{greeting.note}</span>
+        </span>
+      </div>
+      <p class="sr-only" aria-live="polite"></p>
+    </div>
+
+    <h1 class="word me">{hero.name}</h1>
+    <p class="tag">{hero.tagline}</p>
+
+    <button class="cue" type="button" data-goto="desk">
+      <span>{hero.scrollCue}</span>
+      <svg viewBox="0 0 20 120" aria-hidden="true"><path d="M10 0 C 4 30, 16 50, 9 80 S 12 110, 10 120" /></svg>
+    </button>
+  </div>
+</section>
+
+<style>
+  .landing { position: relative; height: 100vh; min-height: 640px; overflow: hidden; scroll-snap-align: start; }
+
+  /* All positions below are in stage units: 100cqw = stage width, stage is 100 x 56. */
+  .stage {
+    position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: min(100vw, calc(100vh * 100 / 58)); aspect-ratio: 100 / 56; container-type: inline-size;
+  }
+
+  .lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .lines :global(path) { fill: var(--color-accent); }
+  .back { z-index: 1; }
+  .front { z-index: 3; }
+
+  .photo { position: absolute; left: 55cqw; bottom: 0; height: 47cqw; width: auto; z-index: 2; user-select: none; }
+
+  .word {
+    margin: 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase;
+    line-height: 0.8; letter-spacing: -0.005em; white-space: nowrap;
+  }
+  .hello { position: absolute; left: 6cqw; top: 10.5cqw; z-index: 4; font-size: 12.5cqw; color: var(--color-ink); }
+  .name { position: absolute; left: 6cqw; top: 21.4cqw; z-index: 4; height: 10cqw; }
+
+  .ask { margin: 0; padding-top: 2.6cqw; }
+  .field { display: inline-flex; align-items: baseline; gap: 0.8cqw; font-size: 3.1cqw; color: var(--color-accent); cursor: text; }
+  .field input {
+    font: inherit; color: inherit; background: none; border: 0; padding: 0; outline: 0;
+    caret-color: var(--color-accent); width: auto; field-sizing: content; min-width: 2ch;
+  }
+  .field input::placeholder { color: var(--color-accent); opacity: 0.5; }
+  .field:focus-within .br { color: var(--color-ink); }
+  .hint { margin: 1.2cqw 0 0; font-size: 0.92cqw; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+  .skip { font: inherit; color: var(--color-ink); background: none; border: 0; padding: 0; margin-left: 0.6em; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+  .said { position: relative; display: inline-block; }
+  .said[hidden] { display: none; }
+  .typed { font-size: 12.5cqw; color: var(--color-accent); background: none; border: 0; padding: 0; cursor: pointer; }
+  .typed :global(span) { display: inline-block; animation: pop 0.6s cubic-bezier(0.2, 0.9, 0.2, 1.15) both; }
+  .you { position: absolute; left: calc(100% + 1.2cqw); top: -2.6cqw; display: flex; align-items: flex-start; gap: 0.3cqw; color: var(--color-accent); font-size: 1.15cqw; letter-spacing: 0.04em; animation: fade 0.6s 0.5s both; }
+  .you svg { width: 4.4cqw; height: auto; overflow: visible; }
+  .you path { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .you span { padding-top: 0.2cqw; transform: rotate(-4deg); white-space: nowrap; }
+
+  .me { position: absolute; left: 6cqw; top: 35.6cqw; z-index: 4; font-size: 7.2cqw; color: var(--color-ink); }
+  .tag { position: absolute; left: 6.2cqw; top: 43.2cqw; z-index: 4; margin: 0; max-width: 38cqw; font-size: 1.12cqw; line-height: 1.5; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-muted); }
+
+  .cue {
+    position: absolute; left: 6.2cqw; top: 48.4cqw; z-index: 4; display: flex; align-items: flex-start; gap: 0.8cqw;
+    font: 500 0.95cqw / 1 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent);
+    background: none; border: 0; padding: 0; cursor: pointer;
+  }
+  .cue svg { width: 1.2cqw; height: 9cqw; margin-top: -0.4cqw; overflow: visible; }
+  .cue path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 5 6; stroke-linecap: round; animation: march 1.4s linear infinite; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @keyframes pop { from { opacity: 0; transform: translateY(0.25em) scaleY(0.6); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+  @keyframes march { to { stroke-dashoffset: -22; } }
+
+  :global(html.reduced) .typed :global(span), :global(html.reduced) .you, :global(html.reduced) .cue path { animation: none; }
+</style>
+
+<script>
+  import { rng, ring, paint, sketch } from '../scripts/contours';
+  import { goTo, initStations } from '../scripts/stations';
+
+  type Pt = [number, number];
+  const back = document.querySelector<SVGGElement>('.landing .back .strokes')!;
+  const front = document.querySelector<SVGGElement>('.landing .front .strokes')!;
+  const svgs = [...document.querySelectorAll<SVGSVGElement>('.landing .lines')];
+
+  // Topo contours centered on the photo: Atticus as the summit.
+  const R = rng(11);
+  const shape = [0.085, R() * 6, 0.06, R() * 6, 0.035, R() * 6];
+  const cx = 69, cy = 30;
+  const shapeAt = (i: number) => shape.map((v, k) => (k % 2 ? v + i * 0.11 : v * (1 + i * 0.1)));
+  const rings = Array.from({ length: 6 }, (_, i) => {
+    const rx = 11 + i * 3.4;
+    return { pts: ring(cx - i * 0.55, cy + i * 0.4, rx, rx * 0.76, shapeAt(i), R), width: 0.4 - i * 0.02, delay: 0.15 + i * 0.12 };
+  });
+  paint(back, rings, R);
+
+  // A few contour arcs pass in front of the photo for depth.
+  const arcs = [
+    { i: 1, start: Math.PI - 0.45, sweep: 0.8 },
+    { i: 2, start: -0.35, sweep: 0.75 },
+  ].map(({ i, start, sweep }) => {
+    const rx = 11 + i * 3.4;
+    return { pts: ring(cx - i * 0.55, cy + i * 0.4, rx, rx * 0.76, shapeAt(i), rng(11 + i), start, sweep, 40), width: 0.34, delay: 0.5 + i * 0.12 };
+  });
+
+  // Summit doodle beside the head: a peak with a small flag, plus a compass star.
+  const peak: Pt[] = [[53.2, 14.6], [56.0, 9.6], [57.4, 11.4], [59.8, 6.4], [63.2, 13.4]];
+  const flag: Pt[] = [[59.8, 6.4], [59.8, 2.6], [62.4, 3.4], [59.8, 4.3]];
+  const star = (x: number, y: number, r: number): Pt[][] => [
+    [[x, y - r], [x, y + r]], [[x - r, y], [x + r, y]],
+    [[x - r * 0.62, y - r * 0.62], [x + r * 0.62, y + r * 0.62]], [[x + r * 0.62, y - r * 0.62], [x - r * 0.62, y + r * 0.62]],
+  ];
+  const doodles = [
+    { pts: sketch(peak, R), width: 0.42, delay: 1.0 },
+    { pts: sketch(flag, R, 0.05, 4), width: 0.32, delay: 1.3 },
+    ...star(84.5, 9.5, 2.0).map((pts, j) => ({ pts: sketch(pts, R, 0.04, 4), width: 0.32, delay: 1.4 + j * 0.06 })),
+  ];
+  paint(front, [...arcs, ...doodles], R);
+
+  const draw = () => svgs.forEach((s) => { s.classList.remove('drawing'); void s.getBoundingClientRect(); s.classList.add('drawing'); });
+
+  // Name prompt. The name lives in this variable only: nothing is stored.
+  const box = document.querySelector<HTMLElement>('.landing .name')!;
+  const form = box.querySelector<HTMLFormElement>('.ask')!;
+  const input = form.querySelector<HTMLInputElement>('input')!;
+  const said = box.querySelector<HTMLElement>('.said')!;
+  const typed = box.querySelector<HTMLButtonElement>('.typed')!;
+  const live = box.querySelector<HTMLElement>('[aria-live]')!;
+  const stage = document.querySelector<HTMLElement>('.landing .stage')!;
+  const fallback = box.dataset.fallback || 'There';
+  const helloWord = document.querySelector('.landing .hello')!.textContent;
+
+  function greet(raw: string) {
+    const first = raw.trim().split(/\s+/)[0]?.slice(0, 16) || fallback;
+    const text = `${first}.`;
+    typed.replaceChildren(...[...text].map((c, i) => {
+      const s = document.createElement('span');
+      s.textContent = c;
+      s.style.animationDelay = `${i * 35}ms`;
+      return s;
+    }));
+    form.hidden = true;
+    said.hidden = false;
+    typed.style.fontSize = '';
+    const max = stage.clientWidth * 0.44;
+    if (typed.offsetWidth > max) typed.style.fontSize = `${12.5 * (max / typed.offsetWidth)}cqw`;
+    live.textContent = `${helloWord}, ${first}.`;
+    draw();
+  }
+
+  // Fallback sizing where CSS field-sizing isn't supported: no dead space after the text.
+  const fit = () => { input.size = Math.max(2, (input.value || input.placeholder).length); };
+  input.addEventListener('input', fit);
+  fit();
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); greet(input.value); });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Escape') greet(''); });
+  form.querySelector('.skip')!.addEventListener('click', () => greet(''));
+  typed.addEventListener('click', () => { said.hidden = true; form.hidden = false; input.select(); input.focus(); });
+
+  document.querySelectorAll<HTMLElement>('[data-goto]').forEach((el) => el.addEventListener('click', () => goTo(el.dataset.goto!)));
+  initStations();
+
+  const start = () => { draw(); input.focus({ preventScroll: true }); };
+  if (document.documentElement.classList.contains('card-open')) window.addEventListener('intro:done', start, { once: true });
+  else start();
+</script>

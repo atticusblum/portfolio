@@ -1,4 +1,8 @@
 ---
+import '@fontsource/big-shoulders-display/800';
+import '@fontsource/big-shoulders-display/900';
+import '@fontsource/dm-mono/400';
+import '@fontsource/dm-mono/500';
 import '../styles/tokens.css';
 interface Props { title: string }
 const { title } = Astro.props;
@@ -11,6 +15,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
     <title>{title}</title>
+    <script is:inline>
+      // Set before first paint: JS is on, and whether motion is reduced.
+      document.documentElement.classList.add('js');
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('reduced');
+      else document.documentElement.classList.add('card-open');
+    </script>
   </head>
   <body>
     <slot />
@@ -18,11 +28,21 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 </html>
 <style is:global>
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  html.reduced { scroll-behavior: auto; }
+  html, body { margin: 0; }
   body {
     background: var(--color-bg);
     color: var(--color-ink);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
   }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+  html.card-open { overflow: hidden; }
+
+  /* Brush-stroke reveal masks (see src/scripts/contours.ts). */
+  .reveal { fill: none; stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .drawing .reveal { animation: reveal 1.9s var(--ease-in-out) forwards; }
+  html.reduced .reveal { animation: none; stroke-dashoffset: 0; }
+  @keyframes reveal { to { stroke-dashoffset: 0; } }
 </style>

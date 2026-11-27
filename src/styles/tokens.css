@@ -1,12 +1,15 @@
-/* Placeholder tokens. Final accent color and fonts are chosen in Phase 2. */
-:root {
-  --color-bg: #f2f0ea;
-  --color-ink: #1a1a1a;
-  --color-muted: #6b6b6b;
-  --color-accent: #3a5a40;
+/* Design tokens. One accent, one display font, one body font.
+   Fonts are self-hosted via Fontsource, imported in src/layouts/Base.astro. */
 
-  --font-display: ui-serif, Georgia, "Times New Roman", serif;
-  --font-body: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+:root {
+  --color-bg: #eeede5;
+  --color-ink: #1d221e;
+  --color-accent: #2f5d46;
+  --color-muted: rgb(29 34 30 / 0.62);
+
+  --font-display: "Big Shoulders Display", Impact, "Arial Narrow", sans-serif;
+  --font-body: "DM Mono", ui-monospace, Menlo, monospace;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }

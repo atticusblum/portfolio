@@ -4,7 +4,7 @@ This is a living document. New objects and ideas get added as they come up. Item
 
 ## 1. Vision
 
-A desktop website that starts on a calm landing scene and rewards exploration. One scroll takes you into a 3D desk and wall, where professional work and personal life sit side by side. The desk is the main experience. A simple top menu gets you to any section directly.
+A desktop website that opens on a short title card, then a hero landing scene that greets you by name, and rewards exploration. One scroll takes you into a 3D desk and wall, where professional work and personal life sit side by side. The desk is the main experience. A simple top menu gets you to any section directly.
 
 Reference qualities:
 - **Scroll scene** (dsgnbyhl): scrolling moves the camera through a 3D world.
@@ -16,9 +16,9 @@ Reference qualities:
 
 | Layer | What it is | Status |
 |---|---|---|
-| Landing scene | First screen. Calm, a breather. Top menu to every section. | Stated |
+| Landing scene | The hero. Asks the visitor's first name and greets them in place ("Hello, [name]"). Photo of Atticus, topo contour lines, top menu to every section, scroll cue to the desk. | Stated |
 | Desk and wall scene | One scroll from the landing scene. Main 3D experience. | Stated |
-| Intro | Ruthi-style entry screen before the landing scene. | Stated |
+| Intro | Short click-to-enter title card before the landing scene. | Stated |
 | Contact | Form or email link. | Deferred (decide later) |
 | Domain | GitHub Pages default address. | Stated |
 | Ambient motion | Constant movement even without interaction, such as a toy airplane towing a LinkedIn banner. | Stated |
@@ -35,7 +35,7 @@ Each object has: what it is, whether it is professional or personal, how it beha
 | Object | Type | Behavior | Reveals | Status |
 |---|---|---|---|---|
 | Ice axe | Personal (mountaineering) | Clickable. Animates into view, then walks through the mountaineering experience in a creative way. | Mountaineering experience | Stated. Details open. |
-| Posters (yours, on your wall) | Professional decoration | Click for a short brief. | Design work | Stated. Need photos. |
+| Posters (bought prints on your wall) | Decoration only | Decoration. Never presented as your design work. | Personal taste only | Stated. Photos in assets/. |
 | Shirt design | Professional | 3D rendering. Location open (desk or inside the Mac). | Design work | Stated. |
 
 ### Desk
@@ -88,7 +88,7 @@ Photos go into `assets/` in the project folder. Take them in even light, straigh
 Each phase ends with something you can open and check. We'll move to the next phase only after you confirm the current one.
 
 1. **Foundation:** site scaffold, deploy to GitHub Pages with a public URL, placeholder landing page. Confirm: the URL loads.
-2. **Landing scene:** the calm first screen, top menu, and the intro. Confirm: it looks right and the menu works.
+2. **Landing scene:** the title card, the hero landing with the name greeting, and the top menu. Confirm: it looks right and the menu works.
 3. **Desk prototype:** a small desk section with 2 to 3 objects, each both 3D in place and floating out on click. This proves the core interaction before we scale to the full desk. Confirm: objects look dimensional in place, and the float-out feels right.
 4. **Desk and wall scene:** the scroll scene with the rest of the objects in place, all at equal visual weight. Start with placeholder shapes if models aren't ready.
 5. **Object interactions:** each object's full behavior, added one at a time.
@@ -109,3 +109,5 @@ Each phase ends with something you can open and check. We'll move to the next ph
 - Content drafts in content/ (bio, intro, work, personal) are mock-ups from memory. Atticus will edit them.
 - Intro set to a Ruthi-style screen. Mac set to a home screen with clickable icons (Photoshop, Professional Material folder). LinkedIn and Spotify links added. Domain set to GitHub Pages default. Contact deferred. All listed objects in the scene, with open slots for future items.
 - Equal visual weight for all objects. No single hero object. Every object is 3D in place and floats out on click to show its full form. Build phase 3 changed from one object to a desk prototype of 2 to 3 objects.
+- Posters on the wall are bought prints, not Atticus's designs. Changed to decoration only (Nov 26, 2026).
+- Landing changed (Nov 26, 2026): the hero is the landing scene. A short click-to-enter title card comes first, then the hero asks the visitor's name and greets them in place. Replaces the separate calm landing. Palette Pine (#2F5D46 on #EEEDE5), Big Shoulders Display and DM Mono.

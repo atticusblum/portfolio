@@ -42,7 +42,9 @@ Read `portfolio-plan.md` first. It is the source of truth for scope, objects, an
 ## Design
 - Quality bar is set by the four reference sites in `references/notes.md`. Match their qualities, not their content.
 - One visual language across the site: one accent color, one display font, one body font, defined as CSS variables in `src/styles/tokens.css`.
-- Intro is a Ruthi-style entry screen. Landing scene is calm, with a top menu to every section.
+- Palette: Pine accent #2F5D46 on #EEEDE5, ink #1D221E. Display: Big Shoulders Display. Body: DM Mono. Self-hosted via Fontsource.
+- Intro is a short click-to-enter title card. The hero is the landing scene: it asks the visitor's first name (kept in memory only, never stored) and greets them in place, with a top menu to every section.
+- Ruthi is a reference for the name mechanic only. Composition, line style, and word placement must be our own.
 - Desk and wall scene: every object is 3D in place, and floats out to show full form on click. No object has more visual weight than another.
 - Respect `prefers-reduced-motion`.
 
