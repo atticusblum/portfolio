@@ -9,11 +9,17 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "placeholders": "node scripts/make-placeholders.mjs"
   },
   "dependencies": {
     "@fontsource/big-shoulders-display": "^5.3.0",
     "@fontsource/dm-mono": "^5.3.0",
-    "astro": "^7.4.13"
+    "astro": "^7.4.13",
+    "gsap": "^3.15.1",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0"
   }
 }

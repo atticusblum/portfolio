@@ -1,0 +1,128 @@
+---
+import { deskObjects } from '../data/objects';
+interface Props {
+  desk: { label: string; hint: string; rotate: string; close: string; list: string };
+  objects: Record<string, { kind: string; title: string; body: string }>;
+}
+const { desk, objects } = Astro.props;
+const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
+---
+<section id="desk" class="desk" data-station="desk" data-copy={JSON.stringify(Object.fromEntries(list.map((o) => [o.id, o])))}>
+  <div class="canvas" aria-hidden="true"></div>
+
+  <p class="label">{desk.label}</p>
+  <p class="hint">{desk.hint}</p>
+  <div class="tip" aria-hidden="true"></div>
+
+  <nav class="list" aria-label={desk.list}>
+    {list.map((o) => <button type="button" data-object={o.id}>{o.title}</button>)}
+  </nav>
+
+  <aside class="panel" aria-live="polite" hidden>
+    <p class="kind"></p>
+    <h2 class="title"></h2>
+    <p class="body"></p>
+    <p class="rotate">{desk.rotate}</p>
+    <button type="button" class="close">{desk.close}</button>
+  </aside>
+</section>
+
+<style>
+  .desk { position: relative; height: 100vh; min-height: 640px; overflow: hidden; scroll-snap-align: start; background: #e8e6dc; }
+  .canvas, .canvas :global(canvas) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .label, .hint, .list button, .kind, .rotate, .close, .tip {
+    font-family: var(--font-body); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .label { position: absolute; left: 4.2vw; top: clamp(70px, 6vw, 110px); margin: 0; font-size: clamp(12px, 0.8vw, 15px); color: var(--color-accent); z-index: 2; }
+  .hint { position: absolute; left: 50%; bottom: clamp(22px, 2.6vw, 44px); transform: translateX(-50%); margin: 0; font-size: clamp(11px, 0.72vw, 14px); color: var(--color-muted); z-index: 2; transition: opacity 0.4s; }
+
+  .tip {
+    position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none; opacity: 0;
+    padding: 6px 10px; border-radius: 99px; font-size: 12px; background: var(--color-ink); color: var(--color-bg);
+    transition: opacity 0.2s;
+  }
+
+  .list { position: absolute; left: 4.2vw; bottom: clamp(22px, 2.6vw, 44px); display: flex; gap: 18px; z-index: 2; }
+  .list button {
+    font-size: clamp(11px, 0.72vw, 14px); color: var(--color-ink); background: none; border: 0; padding: 4px 0; cursor: pointer;
+    border-bottom: 1.5px solid transparent;
+  }
+  .list button:hover, .list button[aria-pressed='true'] { border-color: var(--color-accent); color: var(--color-accent); }
+
+  .panel {
+    position: absolute; right: 6vw; top: 50%; transform: translateY(-50%); width: min(30vw, 440px); z-index: 3;
+    animation: panel-in 0.6s 0.35s var(--ease-out) both;
+  }
+  .panel[hidden] { display: none; }
+  .kind { margin: 0 0 14px; font-size: clamp(11px, 0.75vw, 14px); color: var(--color-accent); }
+  .title { margin: 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; line-height: 0.85; font-size: clamp(56px, 6vw, 112px); color: var(--color-ink); }
+  .body { margin: 22px 0 0; font-size: clamp(13px, 0.9vw, 16px); line-height: 1.6; color: var(--color-ink); max-width: 36ch; }
+  .rotate { margin: 26px 0 0; font-size: 11px; color: var(--color-muted); }
+  .close {
+    margin-top: 28px; font-size: 12px; color: var(--color-accent); background: none; cursor: pointer;
+    border: 1.5px solid var(--color-accent); border-radius: 99px; padding: 10px 16px;
+  }
+  .close:hover { background: var(--color-accent); color: var(--color-bg); }
+  .desk.presenting .hint, .desk.presenting .list { opacity: 0; pointer-events: none; }
+  .hint, .list { transition: opacity 0.4s; }
+
+  @keyframes panel-in { from { opacity: 0; transform: translate(16px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+  :global(html.reduced) .panel { animation: none; }
+</style>
+
+<script>
+  const section = document.querySelector<HTMLElement>('#desk')!;
+  const canvasBox = section.querySelector<HTMLElement>('.canvas')!;
+  const panel = section.querySelector<HTMLElement>('.panel')!;
+  const tip = section.querySelector<HTMLElement>('.tip')!;
+  const buttons = [...section.querySelectorAll<HTMLButtonElement>('[data-object]')];
+  const copy = JSON.parse(section.dataset.copy!);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let api: Awaited<ReturnType<typeof import('../scripts/desk/scene').createDesk>> | null = null;
+  let pending: string | null = null;
+
+  function show(id: string | null) {
+    section.classList.toggle('presenting', !!id);
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.object === id)));
+    if (!id) { panel.hidden = true; return; }
+    const c = copy[id];
+    panel.querySelector('.kind')!.textContent = c.kind;
+    panel.querySelector('.title')!.textContent = c.title;
+    panel.querySelector('.body')!.textContent = c.body;
+    panel.hidden = false;
+  }
+
+  // Load Three.js only when the desk is close, so the landing stays light.
+  const load = new IntersectionObserver(async ([e]) => {
+    if (!e.isIntersecting) return;
+    load.disconnect();
+    try {
+      const { createDesk } = await import('../scripts/desk/scene');
+      api = await createDesk(canvasBox, {
+        reduced,
+        onSelect: (def) => show(def?.id ?? null),
+        onHover: (def, x, y) => {
+          tip.style.opacity = def ? '1' : '0';
+          if (def) { tip.textContent = copy[def.id].title; tip.style.transform = `translate(${x + 16}px, ${y + 14}px)`; }
+        },
+      });
+      if (document.documentElement.dataset.station === 'desk') api.intro();
+      if (pending) api.select(pending);
+    } catch (err) {
+      console.error('[desk] 3D failed to start', err);
+      section.classList.add('no-3d');
+    }
+  }, { rootMargin: '100% 0px' });
+  load.observe(section);
+
+  window.addEventListener('station:change', (e) => {
+    if ((e as CustomEvent).detail.to === 'desk') api?.intro();
+  });
+
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.object!;
+    if (api) api.select(id); else pending = id;
+  }));
+  panel.querySelector('.close')!.addEventListener('click', () => api?.close());
+</script>

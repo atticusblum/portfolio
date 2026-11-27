@@ -4,11 +4,13 @@ dist/
 .DS_Store
 
 # Repo is public. Keep originals and unapproved drafts out of git.
-/assets/
+/assets/*
+!/assets/models/
 /references/
 content/*.md
 !content/site.md
 !content/landing.md
+!content/objects.md
 
 # Local review files
 design-options.html

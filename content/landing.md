@@ -29,7 +29,6 @@ menu:
   - label: Contact
     href: "#contact"
 stubs:
-  desk: "Desk and wall scene. Coming in Phase 3."
   work: "Work. Coming soon."
   personal: "Personal. Coming soon."
   contact: "Contact. Coming soon."

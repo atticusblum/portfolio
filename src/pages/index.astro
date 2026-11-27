@@ -4,6 +4,8 @@ import TitleCard from '../components/TitleCard.astro';
 import SiteMenu from '../components/SiteMenu.astro';
 import Hero from '../components/Hero.astro';
 import CursorTrail from '../components/CursorTrail.astro';
+import Desk from '../components/Desk.astro';
+import { frontmatter as deskCopy } from '../../content/objects.md';
 import { frontmatter as copy } from '../../content/landing.md';
 ---
 <Base title={copy.titleCard.name}>
@@ -13,8 +15,9 @@ import { frontmatter as copy } from '../../content/landing.md';
   <main>
     <Hero greeting={copy.greeting} hero={copy.hero} map={copy.map} />
 
-    <!-- Stub stations. Phase 3 replaces #desk with the 3D desk and wall scene. -->
-    <section id="desk" class="stub" data-station="desk"><p>{copy.stubs.desk}</p></section>
+    <Desk desk={deskCopy.desk} objects={deskCopy.objects} />
+
+    <!-- Stub stations, filled in later phases. -->
     <section id="work" class="stub" data-station="work"><p>{copy.stubs.work}</p></section>
     <section id="personal" class="stub" data-station="personal"><p>{copy.stubs.personal}</p></section>
     <section id="contact" class="stub" data-station="contact"><p>{copy.stubs.contact}</p></section>

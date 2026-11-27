@@ -13,7 +13,8 @@ Read `portfolio-plan.md` first. It is the source of truth for scope, objects, an
 ## Stack
 - Astro, static output. `base` is `/portfolio`, so internal links and asset URLs must go through `import.meta.env.BASE_URL`.
 - Commands: `npm install`, `npm run dev`, `npm run build`.
-- 3D: Three.js, with GSAP for camera and object motion and Lenis for smooth scroll (proposed; confirm in Phase 3).
+- 3D: Three.js 0.187 with GSAP 3 for camera and object motion (chosen in Phase 3). No Lenis: native scroll-snap moves between stations. Three.js loads lazily when the desk comes near.
+- Desk scene code: `src/scripts/desk/scene.ts`. Registry: `src/data/objects.ts`. Stand-ins: `npm run placeholders`.
 - Scroll model: the camera moves between fixed stations (landing, desk, wall) on scroll, dsgnbyhl-style. Not scrubbed.
 
 ## Content
