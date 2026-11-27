@@ -59,7 +59,7 @@ objects:
   mac:
     kind: Desk · Work
     title: Mac
-    body: "[Placeholder] The Mac boots to a home screen with my work. Coming in Phase 5."
+    body: "[Placeholder] One line about what is on this Mac: my design work and my resume."
   supplements:
     kind: Desk
     title: Supplements

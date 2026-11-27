@@ -1,0 +1,257 @@
+---
+// The Mac's home screen. Opens from the laptop screen in the desk scene.
+interface Item { id: string; title: string; body: string }
+interface Props {
+  copy: {
+    menuName: string; back: string;
+    icons: { photoshop: string; folder: string };
+    photoshop: { title: string; intro: string; back: string; items: Item[]; coming: string[]; comingNote: string };
+    folder: { title: string; files: { name: string; note: string }[] };
+  };
+}
+const { copy } = Astro.props;
+const fulls = import.meta.glob<{ default: ImageMetadata }>('../assets/work/*.webp', { eager: true });
+const thumbs = import.meta.glob<{ default: ImageMetadata }>('../assets/work/thumbs/*.webp', { eager: true });
+const work = copy.photoshop.items
+  .map((it) => ({ ...it, full: fulls[`../assets/work/${it.id}.webp`]?.default, thumb: thumbs[`../assets/work/thumbs/${it.id}.webp`]?.default }))
+  .filter((it) => it.full && it.thumb);
+---
+<div class="mac" role="dialog" aria-modal="true" aria-label={copy.menuName} hidden>
+  <canvas class="wallpaper" aria-hidden="true"></canvas>
+
+  <header class="menubar">
+    <span class="name">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 15 L7 7 L10 11 L13 5 L18 15 Z" /></svg>
+      {copy.menuName}
+    </span>
+    <span class="right">
+      <time class="clock"></time>
+      <button type="button" class="quit">{copy.back}</button>
+    </span>
+  </header>
+
+  <div class="icons">
+    <button type="button" class="icon" data-open="photoshop">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" class="app" /><rect x="16" y="16" width="22" height="22" class="layer" /><rect x="26" y="26" width="22" height="22" class="layer2" /></svg>
+      <span>{copy.icons.photoshop}</span>
+    </button>
+    <button type="button" class="icon" data-open="folder">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 16 a4 4 0 0 1 4 -4 h14 l5 5 h25 a4 4 0 0 1 4 4 v29 a4 4 0 0 1 -4 4 h-44 a4 4 0 0 1 -4 -4 z" class="folder" /><path d="M6 22 h52" class="folder-line" /></svg>
+      <span>{copy.icons.folder}</span>
+    </button>
+  </div>
+
+  <section class="window" data-window="photoshop" hidden aria-label={copy.photoshop.title}>
+    <div class="titlebar"><button type="button" class="dot close" aria-label="Close"></button><span class="dot"></span><span class="dot"></span><p>{copy.photoshop.title}</p></div>
+    <div class="body">
+      <div class="grid-view">
+        <p class="intro">{copy.photoshop.intro}</p>
+        <ul class="grid">
+          {work.map((it, i) => (
+            <li><button type="button" class="tile" data-index={i}>
+              <img src={it.thumb!.src} width={it.thumb!.width} height={it.thumb!.height} alt="" loading="lazy" decoding="async" />
+              <span>{it.title}</span>
+            </button></li>
+          ))}
+          {copy.photoshop.coming.map((t) => (
+            <li><div class="tile soon"><div class="soon-box">{copy.photoshop.comingNote}</div><span>{t}</span></div></li>
+          ))}
+        </ul>
+      </div>
+      <div class="detail-view" hidden>
+        <button type="button" class="back">← {copy.photoshop.back}</button>
+        <figure>
+          <img alt="" />
+          <figcaption><h3></h3><p></p></figcaption>
+        </figure>
+        <div class="nav"><button type="button" class="prev" aria-label="Previous">←</button><button type="button" class="next" aria-label="Next">→</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="window small" data-window="folder" hidden aria-label={copy.folder.title}>
+    <div class="titlebar"><button type="button" class="dot close" aria-label="Close"></button><span class="dot"></span><span class="dot"></span><p>{copy.folder.title}</p></div>
+    <ul class="files">
+      {copy.folder.files.map((f) => (
+        <li><svg viewBox="0 0 20 24" aria-hidden="true"><path d="M2 1 h11 l5 5 v17 h-16 z" /><path d="M13 1 v5 h5" /></svg><span class="fname">{f.name}</span><span class="fnote">{f.note}</span></li>
+      ))}
+    </ul>
+  </section>
+
+  <script type="application/json" class="work-data" set:html={JSON.stringify(work.map((w) => ({ title: w.title, body: w.body, src: w.full!.src, w: w.full!.width, h: w.full!.height })))}></script>
+</div>
+
+<style>
+  .mac { position: fixed; inset: 0; z-index: 40; overflow: hidden; font-family: var(--font-body); color: #eeede5; background: #1f3d2f; }
+  .mac[hidden] { display: none; }
+  .wallpaper { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .menubar {
+    position: absolute; top: 0; left: 0; right: 0; height: 34px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 16px; background: rgb(238 237 229 / 0.88); color: var(--color-ink); font-size: 13px; backdrop-filter: blur(12px);
+  }
+  .name { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .name svg { width: 16px; height: 16px; fill: var(--color-accent); }
+  .right { display: flex; align-items: center; gap: 18px; }
+  .quit { font: inherit; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-accent); background: none; border: 0; cursor: pointer; padding: 4px 0; }
+  .quit:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+  .icons { position: absolute; top: 60px; right: 28px; display: flex; flex-direction: column; gap: 22px; }
+  .icon { width: 108px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: 0; color: #eeede5; cursor: pointer; font: inherit; font-size: 12px; text-align: center; padding: 6px; border-radius: 10px; }
+  .icon:hover, .icon:focus-visible { background: rgb(238 237 229 / 0.12); }
+  .icon svg { width: 64px; height: 64px; filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.25)); }
+  .app { fill: #eeede5; }
+  .layer { fill: #2f5d46; }
+  .layer2 { fill: #2f5d46; opacity: 0.55; }
+  .folder { fill: #d9c79a; }
+  .folder-line { stroke: #c4af7c; stroke-width: 2; }
+
+  .window {
+    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: min(78vw, 1100px); height: min(78vh, 760px);
+    background: #f4f3ec; color: var(--color-ink); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 30px 80px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(0 0 0 / 0.08);
+  }
+  .window.small { width: min(48vw, 560px); height: auto; min-height: 260px; }
+  .window[hidden] { display: none; }
+  .titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: #e8e6dc; cursor: grab; user-select: none; }
+  .titlebar p { margin: 0 0 0 10px; font-size: 12px; color: var(--color-muted); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #cfcabb; border: 0; padding: 0; }
+  .dot.close { background: var(--color-accent); cursor: pointer; }
+  .body { flex: 1; overflow: auto; padding: 22px 26px 30px; }
+  .intro { margin: 0 0 18px; font-size: 13px; color: var(--color-muted); }
+  .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; }
+  .tile { width: 100%; display: flex; flex-direction: column; gap: 8px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-size: 12px; text-align: left; color: var(--color-ink); }
+  .tile img { width: 100%; height: auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; background: #e8e6dc; transition: transform 0.3s var(--ease-out), box-shadow 0.3s; }
+  .tile:hover img, .tile:focus-visible img { transform: translateY(-3px); box-shadow: 0 10px 24px rgb(0 0 0 / 0.15); }
+  .tile.soon { cursor: default; color: var(--color-muted); }
+  .soon-box { width: 100%; aspect-ratio: 3 / 4; border-radius: 6px; border: 1.5px dashed #c9c5b6; display: grid; place-items: center; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .detail-view { height: 100%; display: grid; grid-template-rows: auto 1fr auto; gap: 14px; }
+  .detail-view[hidden] { display: none; }
+  .back, .nav button { font: inherit; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-accent); background: none; border: 0; cursor: pointer; padding: 4px 0; justify-self: start; }
+  figure { margin: 0; display: grid; grid-template-columns: 1fr minmax(200px, 30%); gap: 26px; min-height: 0; }
+  figure img { width: 100%; height: 100%; max-height: 58vh; object-fit: contain; background: #e8e6dc; border-radius: 6px; }
+  figcaption h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: 40px; line-height: 0.9; }
+  figcaption p { margin: 0; font-size: 13px; line-height: 1.6; }
+  .nav { display: flex; gap: 18px; }
+
+  .files { list-style: none; margin: 0; padding: 18px 22px; }
+  .files li { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-bottom: 1px solid #e3e0d4; font-size: 13px; }
+  .files svg { width: 18px; height: 22px; fill: #fff; stroke: #8c8778; stroke-width: 1.2; }
+  .fnote { margin-left: auto; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+</style>
+
+<script>
+  import { drawWallpaper } from '../scripts/mac/wallpaper';
+
+  const mac = document.querySelector<HTMLElement>('.mac')!;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canvas = mac.querySelector<HTMLCanvasElement>('.wallpaper')!;
+  const clock = mac.querySelector<HTMLTimeElement>('.clock')!;
+  const work: { title: string; body: string; src: string; w: number; h: number }[] = JSON.parse(mac.querySelector('.work-data')!.textContent!);
+  let fromRect: DOMRect | null = null;
+  let tick = 0;
+  let returnFocus: HTMLElement | null = null;
+
+  const paint = () => {
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    drawWallpaper(canvas.getContext('2d')!, canvas.width, canvas.height);
+  };
+  const time = () => { clock.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+
+  const clipFor = (r: DOMRect) => `inset(${r.top}px ${innerWidth - r.right}px ${innerHeight - r.bottom}px ${r.left}px round 6px)`;
+
+  async function open(rect: DOMRect | null) {
+    fromRect = rect;
+    returnFocus = document.activeElement as HTMLElement;
+    paint();
+    time();
+    tick = window.setInterval(time, 15000);
+    mac.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    if (rect && !reduced) {
+      await mac.animate([{ clipPath: clipFor(rect), opacity: 0.6 }, { clipPath: 'inset(0px 0px 0px 0px round 0px)', opacity: 1 }], { duration: 750, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }).finished;
+    }
+    mac.querySelector<HTMLElement>('.icon')!.focus();
+  }
+
+  async function close() {
+    mac.querySelectorAll<HTMLElement>('.window').forEach((w) => (w.hidden = true));
+    if (fromRect && !reduced) {
+      await mac.animate([{ clipPath: 'inset(0px 0px 0px 0px round 0px)', opacity: 1 }, { clipPath: clipFor(fromRect), opacity: 0.4 }], { duration: 600, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }).finished;
+    }
+    mac.hidden = true;
+    clearInterval(tick);
+    document.documentElement.style.overflow = '';
+    window.dispatchEvent(new Event('mac:closed'));
+    returnFocus?.focus();
+  }
+
+  window.addEventListener('mac:open', (e) => open((e as CustomEvent).detail?.rect ?? null));
+  mac.querySelector('.quit')!.addEventListener('click', close);
+
+  // Windows: open, close, bring to front, drag by the title bar.
+  let z = 1;
+  const show = (name: string) => {
+    const w = mac.querySelector<HTMLElement>(`[data-window="${name}"]`)!;
+    w.hidden = false;
+    w.style.zIndex = String(++z);
+    (w.querySelector<HTMLElement>('.tile, .close') ?? w).focus();
+  };
+  mac.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) => b.addEventListener('click', () => show(b.dataset.open!)));
+  mac.querySelectorAll<HTMLElement>('.window').forEach((w) => {
+    w.addEventListener('pointerdown', () => (w.style.zIndex = String(++z)));
+    w.querySelector('.close')!.addEventListener('click', () => (w.hidden = true));
+    const bar = w.querySelector<HTMLElement>('.titlebar')!;
+    bar.addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest('button')) return;
+      const r = w.getBoundingClientRect();
+      const dx = e.clientX - r.left, dy = e.clientY - r.top;
+      bar.setPointerCapture(e.pointerId);
+      const move = (ev: PointerEvent) => {
+        w.style.transform = 'none';
+        w.style.left = `${Math.max(0, Math.min(innerWidth - 120, ev.clientX - dx))}px`;
+        w.style.top = `${Math.max(34, Math.min(innerHeight - 60, ev.clientY - dy))}px`;
+      };
+      bar.addEventListener('pointermove', move);
+      bar.addEventListener('pointerup', () => bar.removeEventListener('pointermove', move), { once: true });
+    });
+  });
+
+  // Photoshop: grid and detail view.
+  const ps = mac.querySelector<HTMLElement>('[data-window="photoshop"]')!;
+  const gridView = ps.querySelector<HTMLElement>('.grid-view')!;
+  const detail = ps.querySelector<HTMLElement>('.detail-view')!;
+  const img = detail.querySelector('img')!;
+  let current = 0;
+  const showItem = (i: number) => {
+    current = (i + work.length) % work.length;
+    const it = work[current];
+    img.src = it.src;
+    img.width = it.w;
+    img.height = it.h;
+    img.alt = it.title;
+    detail.querySelector('h3')!.textContent = it.title;
+    detail.querySelector('figcaption p')!.textContent = it.body;
+    gridView.hidden = true;
+    detail.hidden = false;
+  };
+  ps.querySelectorAll<HTMLButtonElement>('.tile[data-index]').forEach((t) => t.addEventListener('click', () => { showItem(+t.dataset.index!); detail.querySelector<HTMLElement>('.back')!.focus(); }));
+  detail.querySelector('.back')!.addEventListener('click', () => { detail.hidden = true; gridView.hidden = false; ps.querySelector<HTMLElement>(`.tile[data-index="${current}"]`)?.focus(); });
+  detail.querySelector('.prev')!.addEventListener('click', () => showItem(current - 1));
+  detail.querySelector('.next')!.addEventListener('click', () => showItem(current + 1));
+
+  addEventListener('keydown', (e) => {
+    if (mac.hidden) return;
+    if (!detail.hidden && !ps.hidden && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) showItem(current + (e.key === 'ArrowRight' ? 1 : -1));
+    if (e.key === 'Escape') {
+      e.stopImmediatePropagation();
+      const open = [...mac.querySelectorAll<HTMLElement>('.window')].filter((w) => !w.hidden).sort((a, b) => +b.style.zIndex - +a.style.zIndex);
+      if (open.length) open[0].hidden = true;
+      else close();
+    }
+  }, true);
+  addEventListener('resize', () => { if (!mac.hidden) paint(); });
+</script>

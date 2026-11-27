@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import gsap from 'gsap';
 import { deskObjects, openSlots, type DeskObject } from '../../data/objects';
+import { drawHomeTexture } from '../mac/wallpaper';
 
 // Models resolve by filename, so replacing a file in assets/models/ needs no code change.
 const modelUrls = import.meta.glob('/assets/models/*.glb', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
@@ -24,6 +25,7 @@ type Item = {
 export type DeskOptions = {
   reduced: boolean;
   bannerText: string;
+  screenLabels: [string, string];
   onSelect: (def: DeskObject | null) => void;
   onHover: (def: DeskObject | null, x: number, y: number) => void;
 };
@@ -88,17 +90,41 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // Light: soft sky fill plus one warm key from the upper left, like a window.
-  scene.add(new THREE.HemisphereLight('#fffaf0', '#b7ae9c', 0.9));
-  const key = new THREE.DirectionalLight('#fff1dc', 2.3);
-  key.position.set(-2.2, 3.6, 2.6);
-  key.target.position.set(0, 0.9, -0.5);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  Object.assign(key.shadow.camera, { left: -2.6, right: 2.6, top: 2.6, bottom: -1.4, near: 0.5, far: 10 });
-  key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.02;
-  scene.add(key, key.target);
+  // Light: daylight through a window on the left side of the room.
+  // A spotlight projects a window-pane pattern (soft mullion shadows) across the
+  // wall and desk; a cool sky fill and a faint front fill keep the shadow side readable.
+  scene.add(new THREE.HemisphereLight('#eef2fb', '#b9ae98', 0.75));
+  const fill = new THREE.DirectionalLight('#fff6ea', 0.35);
+  fill.position.set(1.5, 2.5, 4);
+  scene.add(fill);
+
+  const pane = document.createElement('canvas');
+  pane.width = pane.height = 512;
+  const pg = pane.getContext('2d')!;
+  pg.fillStyle = '#000';
+  pg.fillRect(0, 0, 512, 512);
+  pg.filter = 'blur(7px)';
+  pg.fillStyle = '#fff';
+  const border = 40, mullion = 22, cols = 2, rows = 3;
+  const pw = (512 - border * 2 - mullion * (cols - 1)) / cols;
+  const ph = (512 - border * 2 - mullion * (rows - 1)) / rows;
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) pg.fillRect(border + c * (pw + mullion), border + r * (ph + mullion), pw, ph);
+  }
+  const windowTex = new THREE.CanvasTexture(pane);
+  windowTex.colorSpace = THREE.SRGBColorSpace;
+
+  const sun = new THREE.SpotLight('#fff1dc', 62, 0, 0.52, 0.2, 2);
+  sun.position.set(-3.5, 2.55, -0.15);
+  sun.target.position.set(0.55, 0.95, -0.9);
+  sun.map = windowTex;
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0003;
+  sun.shadow.normalBias = 0.02;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 9;
+  scene.add(sun, sun.target);
 
   // Veil that dims the room behind a presented object. Lives on the camera.
   const veil = new THREE.Mesh(
@@ -164,6 +190,41 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   items.sort((a, b) => deskObjects.indexOf(a.def) - deskObjects.indexOf(b.def));
   const clickable = items.filter((i) => i.def.clickable !== false);
 
+  // The Mac's screen shows its home screen, lit like a display.
+  let macScreen: THREE.Mesh | null = null;
+  items.find((i) => i.def.id === 'mac')?.root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh && (m.material as THREE.Material).name === 'screen') macScreen = m;
+  });
+  if (macScreen) {
+    await document.fonts.ready;
+    const cv = document.createElement('canvas');
+    cv.width = 1024;
+    cv.height = 640;
+    drawHomeTexture(cv.getContext('2d')!, cv.width, cv.height, opts.screenLabels);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    const mat = new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.55, roughness: 0.25 });
+    (macScreen as THREE.Mesh).material = mat;
+    // Box UVs from Blender: front face spans the full texture after remapping by bounds.
+    const g = (macScreen as THREE.Mesh).geometry;
+    g.computeBoundingBox();
+    const bb = g.boundingBox!;
+    const pos = g.attributes.position;
+    const uv = new Float32Array(pos.count * 2);
+    const sx = bb.max.x - bb.min.x || 1;
+    const lenY = bb.max.y - bb.min.y, lenZ = bb.max.z - bb.min.z;
+    const vAxis = lenY > lenZ ? 'y' : 'z';
+    const sv = Math.max(lenY, lenZ) || 1;
+    for (let i = 0; i < pos.count; i++) {
+      uv[i * 2] = (pos.getX(i) - bb.min.x) / sx;
+      uv[i * 2 + 1] = vAxis === 'y' ? (pos.getY(i) - bb.min.y) / sv : (pos.getZ(i) - bb.min.z) / sv;
+    }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  }
+
+
   // Open slots: masking-tape corners marking a spot saved for something new.
   const tape = new THREE.MeshStandardMaterial({ color: '#e6d9b3', roughness: 0.9 });
   for (const slot of openSlots) {
@@ -200,7 +261,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
-    const L = 0.78, H = 0.12;
+    const L = 0.66, H = 0.1;
     const geo = new THREE.PlaneGeometry(L, H, 32, 1);
     geo.rotateY(Math.PI / 2); // lies along the flight direction, faces sideways
     geo.translate(0, 0, -(L / 2 + 0.2));
@@ -219,7 +280,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     bannerBase = Float32Array.from(geo.attributes.position.array as Float32Array);
     flyer.root.add(banner);
     const rope = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -0.06), new THREE.Vector3(0, 0, -0.2)]),
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -0.12), new THREE.Vector3(0, 0, -0.2)]),
       new THREE.LineBasicMaterial({ color: '#1d221e' }),
     );
     rope.raycast = () => {};
@@ -404,17 +465,20 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
       flightT += opts.reduced || hovered === flyer ? 0 : dt / f.seconds;
       const a = flightT * Math.PI * 2 + (opts.reduced ? Math.PI * 0.62 : 0);
       const [rx, rz] = f.radius;
-      const pos = new THREE.Vector3(f.center[0] + Math.cos(a) * rx, f.center[1] + Math.sin(a * 2) * 0.06, f.center[2] + Math.sin(a) * rz);
-      const vel = new THREE.Vector3(-Math.sin(a) * rx, Math.cos(a * 2) * 0.12, Math.cos(a) * rz);
+      // Dips on the front half of the loop (closer to the camera) so it stays below the menu.
+      const dip = 0.24, front = Math.max(0, Math.sin(a));
+      const pos = new THREE.Vector3(f.center[0] + Math.cos(a) * rx, f.center[1] + Math.sin(a * 2) * 0.05 - dip * front, f.center[2] + Math.sin(a) * rz);
+      const vel = new THREE.Vector3(-Math.sin(a) * rx, Math.cos(a * 2) * 0.1 - dip * (Math.sin(a) > 0 ? Math.cos(a) : 0), Math.cos(a) * rz);
       flyer.root.position.copy(pos);
       flyer.root.lookAt(flyer.root.position.clone().add(vel));
       flyer.root.rotateZ(-Math.cos(a) * 0.25);
-      if (flyer.prop && !opts.reduced) flyer.prop.rotation.z += dt * 40;
+      // The propeller node's local X points along the nose.
+      if (flyer.prop && !opts.reduced) flyer.prop.rotation.x += dt * 40;
       if (banner && bannerBase && !opts.reduced) {
         const arr = banner.geometry.attributes.position.array as Float32Array;
         for (let i = 0; i < arr.length; i += 3) {
           const z = bannerBase[i + 2];
-          const trail = Math.min(1, Math.max(0, (-z - 0.2) / 0.78));
+          const trail = Math.min(1, Math.max(0, (-z - 0.2) / 0.66));
           arr[i] = bannerBase[i] + Math.sin(z * 14 + clock.elapsedTime * 7) * 0.02 * trail;
         }
         banner.geometry.attributes.position.needsUpdate = true;
@@ -435,7 +499,24 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     gsap.fromTo(REST.pos, START, { x: rest.x, y: rest.y, z: rest.z, duration: 1.6, ease: 'power3.out' });
   };
 
+  /** Where the Mac's screen is on the page (for the home screen to grow from). */
+  const screenRect = (): DOMRect | null => {
+    if (!macScreen) return null;
+    const m = macScreen as THREE.Mesh;
+    m.geometry.computeBoundingBox();
+    const bb = m.geometry.boundingBox!;
+    const r = renderer.domElement.getBoundingClientRect();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
+      const p = new THREE.Vector3(x, y, z).applyMatrix4(m.matrixWorld).project(camera);
+      const px = r.left + ((p.x + 1) / 2) * r.width, py = r.top + ((1 - p.y) / 2) * r.height;
+      x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+    }
+    return new DOMRect(x0, y0, x1 - x0, y1 - y0);
+  };
+
   return {
+    screenRect,
     select: (id: string) => { const it = items.find((i) => i.def.id === id); if (it) select(it); },
     close: () => close(),
     intro,

@@ -74,11 +74,11 @@ export const deskObjects: DeskObject[] = [
   // Floor: the guitar leans against the wall right of the desk.
   { id: 'guitar', model: 'guitar.glb', content: 'guitar', surface: 'floor', position: [1.74, 0, -0.84], rotation: [-0.14, -0.3, 0.04], size: 0.8, present: [0.05, -0.35, -0.35], standIn: 'box' },
 
-  // Air: the toy airplane loops in front of the wall towing the LinkedIn banner.
+  // Air: the LinkedIn-blue toy plane loops the whole room, above the posters, towing the banner.
   {
-    id: 'toy-airplane', model: 'toy-airplane.glb', content: 'airplane', surface: 'air', position: [0, 2.0, -0.3], rotation: [0, 0, 0], size: 0.3, present: flat,
+    id: 'toy-airplane', model: 'toy-airplane.glb', content: 'airplane', surface: 'air', position: [0, 2.0, -0.3], rotation: [0, 0, 0], size: 0.255, present: flat,
     link: 'https://www.linkedin.com/in/atticusblum/',
-    flight: { center: [-0.62, 1.8, -0.32], radius: [0.75, 0.28], seconds: 16 },
+    flight: { center: [0.12, 1.92, -0.3], radius: [1.66, 0.42], seconds: 26 },
     standIn: 'box',
   },
 ];

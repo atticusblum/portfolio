@@ -3,11 +3,12 @@ import { deskObjects } from '../data/objects';
 interface Props {
   desk: { label: string; hint: string; rotate: string; close: string; list: string; banner: string };
   objects: Record<string, { kind: string; title: string; body: string }>;
+  mac: { open: string; icons: { photoshop: string; folder: string } };
 }
-const { desk, objects } = Astro.props;
+const { desk, objects, mac } = Astro.props;
 const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: o.id, link: o.link, ...objects[o.content] }));
 ---
-<section id="desk" class="desk" data-station="desk" data-banner={desk.banner} data-copy={JSON.stringify(Object.fromEntries(list.map((o) => [o.id, o])))}>
+<section id="desk" class="desk" data-station="desk" data-banner={desk.banner} data-screen-labels={JSON.stringify([mac.icons.photoshop, mac.icons.folder])} data-copy={JSON.stringify(Object.fromEntries(list.map((o) => [o.id, o])))}>
   <div class="canvas" aria-hidden="true"></div>
 
   <p class="label">{desk.label}</p>
@@ -28,6 +29,7 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
     <h2 class="title"></h2>
     <p class="body"></p>
     <p class="rotate">{desk.rotate}</p>
+    <button type="button" class="open-mac" hidden>{mac.open} →</button>
     <button type="button" class="close">{desk.close}</button>
   </aside>
 </section>
@@ -74,6 +76,9 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
     border: 1.5px solid var(--color-accent); border-radius: 99px; padding: 10px 16px;
   }
   .close:hover { background: var(--color-accent); color: var(--color-bg); }
+  .open-mac { display: block; margin-top: 28px; font: 500 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-bg); background: var(--color-accent); border: 0; border-radius: 99px; padding: 12px 18px; cursor: pointer; }
+  .open-mac[hidden] { display: none; }
+  .open-mac + .close { margin-top: 12px; }
   .desk.presenting .hint, .desk.presenting .list { opacity: 0; pointer-events: none; }
   .hint, .list { transition: opacity 0.4s; }
 
@@ -100,6 +105,7 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
     panel.querySelector('.kind')!.textContent = c.kind;
     panel.querySelector('.title')!.textContent = c.title;
     panel.querySelector('.body')!.textContent = c.body;
+    panel.querySelector<HTMLElement>('.open-mac')!.hidden = id !== 'mac';
     panel.hidden = false;
   }
 
@@ -112,6 +118,7 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
       api = await createDesk(canvasBox, {
         reduced,
         bannerText: section.dataset.banner ?? '',
+        screenLabels: JSON.parse(section.dataset.screenLabels ?? '["",""]'),
         onSelect: (def) => show(def?.id ?? null),
         onHover: (def, x, y) => {
           tip.style.opacity = def ? '1' : '0';
@@ -136,6 +143,9 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
     if (api) api.select(id); else pending = id;
   }));
   panel.querySelector('.close')!.addEventListener('click', () => api?.close());
+  panel.querySelector('.open-mac')!.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('mac:open', { detail: { rect: api?.screenRect() ?? null } }));
+  });
 
   const toggle = section.querySelector<HTMLButtonElement>('.toggle')!;
   const items = section.querySelector<HTMLElement>('#desk-objects')!;

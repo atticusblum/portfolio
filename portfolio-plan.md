@@ -112,3 +112,4 @@ Each phase ends with something you can open and check. We'll move to the next ph
 - Posters on the wall are bought prints, not Atticus's designs. Changed to decoration only (Nov 26, 2026).
 - Landing changed (Nov 26, 2026): the hero is the landing scene. A short click-to-enter title card comes first, then the hero asks the visitor's name and greets them in place. Replaces the separate calm landing. Palette Pine (#2F5D46 on #EEEDE5), Big Shoulders Display and DM Mono.
 - Correction (Nov 27, 2026): the posters are Atticus's own designs, made in the style of other posters, not bought prints. Back to design work, fine to show on the site.
+- Phase 5 (Nov 27, 2026): toy airplane is Atticus's LinkedIn-blue model, 15% smaller, flying the whole room. Natural window light from the left. Mac home screen built (Photoshop gallery of poster designs, Professional Material folder with resume placeholder).

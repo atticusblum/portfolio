@@ -6,16 +6,19 @@ import Hero from '../components/Hero.astro';
 import CursorTrail from '../components/CursorTrail.astro';
 import Desk from '../components/Desk.astro';
 import { frontmatter as deskCopy } from '../../content/objects.md';
+import MacDesktop from '../components/MacDesktop.astro';
+import { frontmatter as macCopy } from '../../content/mac.md';
 import { frontmatter as copy } from '../../content/landing.md';
 ---
 <Base title={copy.titleCard.name}>
   <TitleCard {...copy.titleCard} />
   <CursorTrail />
+  <MacDesktop copy={macCopy} />
   <SiteMenu name={copy.titleCard.name} items={copy.menu} />
   <main>
     <Hero greeting={copy.greeting} hero={copy.hero} map={copy.map} />
 
-    <Desk desk={deskCopy.desk} objects={deskCopy.objects} />
+    <Desk desk={deskCopy.desk} objects={deskCopy.objects} mac={macCopy} />
 
     <!-- Stub stations, filled in later phases. -->
     <section id="work" class="stub" data-station="work"><p>{copy.stubs.work}</p></section>

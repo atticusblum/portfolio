@@ -49,6 +49,13 @@
 - Checked: 1512x744 (Chrome, real clicks: journal, guitar, posters, plane hover, list), 1440x900, 1920x1080. No console errors.
 - New scripts: `scripts/blender/make_silhouette.py`, `make_laptop.py`, `make_supplements.py`, `make_airplane.py`; `scripts/supplement-labels.mjs`, `scripts/poster-images.mjs`. Build inputs (cutouts, labels, trimmed posters, built copies) in `assets/_source/` (not in git).
 
+- Phase 5 started (Nov 27, not committed):
+  - Toy airplane: Atticus's LinkedIn-blue model (`assets/linkedin_blue_toy_plane.glb`) prepared with `scripts/prepare-plane.mjs` (propeller grouped to spin, rotated to spec), 15% smaller, loops the whole room above the posters and dips on the near side to stay below the menu.
+  - Window light: daylight through a window on the left, a spotlight projecting soft window-pane shadows across wall, desk, and floor, plus cool sky fill.
+  - Mac (first object behavior): the laptop screen shows a live home-screen texture. Floating it out shows "Open the Mac", which grows a full-screen home screen out of the laptop: menu bar with clock, Photoshop (gallery of the 8 poster designs with detail view and arrow keys; shirt and KC Athletics marked "Coming soon") and Professional Material (Resume.pdf "Coming soon"). Draggable windows, Esc closes top window, then the home screen. Copy in `content/mac.md`.
+  - Design work web copies: `src/assets/work/` via `scripts/work-images.mjs`.
+  - Next objects need decisions: ice axe walkthrough concept, journal concept and content, guitar videos, Spotify (deferred), resume PDF, shirt design.
+
 ## Decisions (Nov 26, 2026)
 - Repo `atticusblum/portfolio` (the `atticusblum.github.io` repo is an older site, left alone).
 - 3D models: AI-generated from reference photos.
@@ -60,10 +67,10 @@
 
 ## Next
 - Atticus reviews the Phase 3 prototype and approves the push.
-- Atticus reviews the full desk and approves a commit.
+- Atticus reviews Phase 5 so far (plane, window light, Mac) and approves a commit.
 - Real measurements (posters, journal, guitar, ice axe), shirt design file, journal cover photo, toy airplane photo: each is a rerun of one script.
 - Approve copy in `content/intro.md`, then replace the [Placeholder] lines in `content/landing.md`.
-- Phase 4 is built (above). Next: Phase 5, each object's full behavior.
+- Phase 4 is live. Phase 5 in progress: Mac done; ice axe, journal, guitar, JBL next.
 
 ## Placeholders still in use
 - Title card line and hero tagline (`content/landing.md`).

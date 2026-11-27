@@ -11,6 +11,7 @@ content/*.md
 !content/site.md
 !content/landing.md
 !content/objects.md
+!content/mac.md
 
 # Local review files
 design-options.html
