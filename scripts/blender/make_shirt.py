@@ -16,7 +16,6 @@ import os
 import sys
 
 import bpy
-import bmesh
 
 sys.path.append(os.path.dirname(__file__))
 import common  # noqa: E402
@@ -42,25 +41,27 @@ outline = half + [(-x, z) for x, z in reversed(half[1:-1])]
 # Collar dip at the front.
 outline[0] = (0.0, 0.56)
 
-bm = bmesh.new()
-verts = [bm.verts.new((x * chest, 0, z * chest)) for x, z in outline]
-face = bm.faces.new(verts)
-bmesh.ops.triangulate(bm, faces=[face])
-mesh = bpy.data.meshes.new("shirt")
-bm.to_mesh(mesh)
-bm.free()
-shirt = bpy.data.objects.new("shirt", mesh)
+# A filled 2D curve handles the concave outline reliably, then becomes a mesh.
+curve = bpy.data.curves.new("shirt", "CURVE")
+curve.dimensions = "2D"
+curve.fill_mode = "BOTH"
+curve.extrude = 0.002  # half the fabric thickness
+curve.bevel_depth = 0.0015
+curve.bevel_resolution = 2
+spline = curve.splines.new("POLY")
+spline.points.add(len(outline) - 1)
+for pt, (x, z) in zip(spline.points, outline):
+    pt.co = (x * chest, z * chest, 0, 1)
+spline.use_cyclic_u = True
+shirt = bpy.data.objects.new("shirt", curve)
 bpy.context.scene.collection.objects.link(shirt)
 bpy.context.view_layer.objects.active = shirt
 shirt.select_set(True)
-
-solid = shirt.modifiers.new("thickness", "SOLIDIFY")
-solid.thickness = 0.004
-bevel = shirt.modifiers.new("soft", "BEVEL")
-bevel.width = 0.003
-bevel.segments = 2
-bpy.ops.object.modifier_apply(modifier=solid.name)
-bpy.ops.object.modifier_apply(modifier=bevel.name)
+bpy.ops.object.convert(target="MESH")
+shirt = bpy.context.view_layer.objects.active
+# The curve was drawn in X/Y; stand it up so the front faces -Y.
+shirt.rotation_euler = (1.5708, 0, 0)
+bpy.ops.object.transform_apply(rotation=True)
 shirt.data.materials.append(common.material("fabric", color=color, roughness=0.95))
 
 if design:

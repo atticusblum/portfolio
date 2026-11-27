@@ -31,6 +31,7 @@ const builders = {
     place(new THREE.CylinderGeometry(0.05, 0.05, 0.045, 48), { y: 0.05, rx: Math.PI / 2 }), // puck, faces +Z
     place(new THREE.TorusGeometry(0.018, 0.004, 12, 32), { y: 0.11 }), // carabiner loop
   ],
+  box: () => [place(new THREE.BoxGeometry(0.3, 0.3, 0.05), { y: 0.15 })],
   laptop: () => [
     place(new THREE.BoxGeometry(0.31, 0.012, 0.22), { y: 0.006 }), // base
     place(new THREE.BoxGeometry(0.31, 0.2, 0.006), { y: 0.1, rx: -0.26, z: -0.08 }), // screen, tilted back

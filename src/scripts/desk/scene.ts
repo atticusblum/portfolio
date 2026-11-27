@@ -5,27 +5,31 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import gsap from 'gsap';
-import { deskObjects, type DeskObject } from '../../data/objects';
+import { deskObjects, openSlots, type DeskObject } from '../../data/objects';
 
 // Models resolve by filename, so replacing a file in assets/models/ needs no code change.
 const modelUrls = import.meta.glob('/assets/models/*.glb', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
 
 type Item = {
   def: DeskObject;
-  root: THREE.Group; // slot transform (animated on float-out)
+  root: THREE.Group; // slot position (animated on float-out)
   spin: THREE.Group; // turntable rotation while presented
-  home: { pos: THREE.Vector3; quat: THREE.Quaternion; scale: number };
+  orient: THREE.Group; // how the object sits in its slot; straightened when presented
+  home: { pos: THREE.Vector3; quat: THREE.Quaternion; orientPos: THREE.Vector3; orientQuat: THREE.Quaternion };
+  center: THREE.Vector3; // orient position that centers the upright model on the root
   lift: THREE.Vector3; // hover offset direction
+  prop?: THREE.Object3D; // airplane propeller
 };
 
 export type DeskOptions = {
   reduced: boolean;
+  bannerText: string;
   onSelect: (def: DeskObject | null) => void;
   onHover: (def: DeskObject | null, x: number, y: number) => void;
 };
 
 const COLORS = { wall: '#e8e6dc', floor: '#d6d2c4', desk: '#cdbfa6', deskEdge: '#b9aa8f', veil: '#eeede5' };
-const REST = { pos: new THREE.Vector3(0, 1.32, 2.95), look: new THREE.Vector3(0, 1.02, -0.5) };
+const REST = { pos: new THREE.Vector3(0, 1.38, 3.3), look: new THREE.Vector3(0, 1.1, -0.5) };
 const START = { x: 0, y: 2.1, z: 4.9 };
 
 export async function createDesk(container: HTMLElement, opts: DeskOptions) {
@@ -91,7 +95,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   key.target.position.set(0, 0.9, -0.5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
-  Object.assign(key.shadow.camera, { left: -2.2, right: 2.2, top: 2.2, bottom: -1.2, near: 0.5, far: 9 });
+  Object.assign(key.shadow.camera, { left: -2.6, right: 2.6, top: 2.6, bottom: -1.4, near: 0.5, far: 10 });
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
   scene.add(key, key.target);
@@ -121,32 +125,106 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
         if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; }
       });
 
-      // Fit: scale the largest dimension to def.size, then anchor in the slot.
+      // Fit: scale the largest dimension to def.size.
       let box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       model.scale.multiplyScalar(def.size / Math.max(size.x, size.y, size.z));
       box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3()).negate();
+
+      // Orient: how it sits (lying flat, leaning). Order YXZ = tilt first, then yaw.
+      const orient = new THREE.Group();
+      orient.rotation.set(def.rotation[0], def.rotation[1], def.rotation[2], 'YXZ');
+      orient.add(model);
+      orient.updateMatrixWorld(true);
+      // Anchor in the slot: base on the surface, back on the wall, or centered.
+      box = new THREE.Box3().setFromObject(orient);
       const c = box.getCenter(new THREE.Vector3());
-      if (def.surface === 'desk') model.position.sub(new THREE.Vector3(c.x, box.min.y, c.z));
-      else model.position.sub(new THREE.Vector3(c.x, c.y, box.min.z));
+      if (def.surface === 'desk' || def.surface === 'floor') orient.position.set(-c.x, -box.min.y, -c.z);
+      else if (def.surface === 'wall') orient.position.set(-c.x, -c.y, -box.min.z);
+      else orient.position.set(-c.x, -c.y, -c.z);
 
       const spin = new THREE.Group();
-      spin.add(model);
+      spin.add(orient);
       const root = new THREE.Group();
       root.add(spin);
       root.position.set(...def.position);
-      root.rotation.set(...def.rotation);
       root.userData.id = def.id;
       scene.add(root);
 
       items.push({
-        def, root, spin,
-        home: { pos: root.position.clone(), quat: root.quaternion.clone(), scale: 1 },
-        lift: def.surface === 'desk' ? new THREE.Vector3(0, 0.025, 0) : new THREE.Vector3(0, 0, 0.035),
+        def, root, spin, orient,
+        home: { pos: root.position.clone(), quat: root.quaternion.clone(), orientPos: orient.position.clone(), orientQuat: orient.quaternion.clone() },
+        center,
+        lift: def.surface === 'wall' ? new THREE.Vector3(0, 0, 0.035) : new THREE.Vector3(0, 0.025, 0),
+        prop: model.getObjectByName('propeller') ?? undefined,
       });
     }),
   );
   items.sort((a, b) => deskObjects.indexOf(a.def) - deskObjects.indexOf(b.def));
+  const clickable = items.filter((i) => i.def.clickable !== false);
+
+  // Open slots: masking-tape corners marking a spot saved for something new.
+  const tape = new THREE.MeshStandardMaterial({ color: '#e6d9b3', roughness: 0.9 });
+  for (const slot of openSlots) {
+    const [w, h] = slot.size;
+    for (const [sx, sy] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.022), tape);
+      strip.position.set(slot.position[0] + (sx * w) / 2, slot.position[1] + (sy * h) / 2, slot.position[2]);
+      strip.rotation.z = sx * sy * Math.PI / 4;
+      strip.receiveShadow = true;
+      scene.add(strip);
+    }
+  }
+
+  // Airplane banner: a waving strip towed behind the plane.
+  const flyer = items.find((i) => i.def.flight);
+  let banner: THREE.Mesh | null = null;
+  let bannerBase: Float32Array | null = null;
+  if (flyer) {
+    await document.fonts.ready;
+    const cv = document.createElement('canvas');
+    cv.width = 1024;
+    cv.height = 160;
+    const g = cv.getContext('2d')!;
+    g.fillStyle = '#eeede5';
+    g.fillRect(0, 0, cv.width, cv.height);
+    g.strokeStyle = '#2f5d46';
+    g.lineWidth = 8;
+    g.strokeRect(4, 4, cv.width - 8, cv.height - 8);
+    g.fillStyle = '#1d221e';
+    g.font = '500 64px "DM Mono", monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(opts.bannerText.toUpperCase(), cv.width / 2, cv.height / 2 + 4);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    const L = 0.78, H = 0.12;
+    const geo = new THREE.PlaneGeometry(L, H, 32, 1);
+    geo.rotateY(Math.PI / 2); // lies along the flight direction, faces sideways
+    geo.translate(0, 0, -(L / 2 + 0.2));
+    // Front and back each get their own texture so the text reads left to right
+    // on both halves of the loop.
+    const back = tex.clone();
+    back.wrapS = THREE.RepeatWrapping;
+    back.repeat.x = -1;
+    back.needsUpdate = true;
+    banner = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, side: THREE.FrontSide, roughness: 0.9 }));
+    const bannerBack = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: back, side: THREE.BackSide, roughness: 0.9 }));
+    bannerBack.raycast = () => {};
+    flyer.root.add(bannerBack);
+    banner.castShadow = true;
+    banner.raycast = () => {}; // only the plane itself is clickable
+    bannerBase = Float32Array.from(geo.attributes.position.array as Float32Array);
+    flyer.root.add(banner);
+    const rope = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -0.06), new THREE.Vector3(0, 0, -0.2)]),
+      new THREE.LineBasicMaterial({ color: '#1d221e' }),
+    );
+    rope.raycast = () => {};
+    flyer.root.add(rope);
+  }
 
   // Size and render loop. Narrower screens pull the camera back so the desk still fits.
   let backOff = 0;
@@ -176,7 +254,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     const r = renderer.domElement.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hits = ray.intersectObjects(items.map((i) => i.root), true);
+    const hits = ray.intersectObjects(clickable.map((i) => i.root), true);
     if (!hits.length) return null;
     let o: THREE.Object3D | null = hits[0].object;
     while (o && !o.userData.id) o = o.parent;
@@ -185,8 +263,8 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
 
   const setHover = (it: Item | null, e?: PointerEvent) => {
     if (it !== hovered) {
-      if (hovered) gsap.to(hovered.root.position, { ...vec(hovered.home.pos), duration: dur(0.35), ease: 'power2.out' });
-      if (it) gsap.to(it.root.position, { ...vec(it.home.pos.clone().add(it.lift)), duration: dur(0.35), ease: 'power2.out' });
+      if (hovered && !hovered.def.flight) gsap.to(hovered.root.position, { ...vec(hovered.home.pos), duration: dur(0.35), ease: 'power2.out' });
+      if (it && !it.def.flight) gsap.to(it.root.position, { ...vec(it.home.pos.clone().add(it.lift)), duration: dur(0.35), ease: 'power2.out' });
       hovered = it;
       renderer.domElement.style.cursor = it ? 'pointer' : '';
     }
@@ -197,6 +275,10 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
 
   // Float out: in front of the camera, left of center (the panel sits on the right).
   function select(it: Item) {
+    if (it.def.link) {
+      window.open(it.def.link, '_blank', 'noopener');
+      return;
+    }
     if (busy || selected === it) return;
     if (selected) return close(() => select(it));
     busy = true;
@@ -214,21 +296,24 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     const up = new THREE.Vector3().crossVectors(right, dir).normalize();
     const target = camera.position.clone().addScaledVector(dir, D).addScaledVector(right, -visW * 0.16).addScaledVector(up, -visH * 0.02);
     const scale = (visH * 0.56) / it.def.size;
-    // Face the camera, turned a little for a three-quarter view.
+    // Face the camera, turned a little for a three-quarter view. The object is
+    // straightened (orient -> upright, centered) so its middle lands on target.
     const quat = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...it.def.present)));
-
-    // The model's base sits at the root origin; shift so the object's middle lands on target.
-    const box = new THREE.Box3().setFromObject(it.spin);
-    const mid = box.getCenter(new THREE.Vector3()).sub(it.root.position).multiplyScalar(scale);
-    target.sub(mid.applyQuaternion(quat.clone().multiply(it.root.quaternion.clone().invert())));
 
     veil.visible = true;
     const from = it.root.quaternion.clone();
+    const oFrom = it.orient.quaternion.clone();
+    const upright = new THREE.Quaternion();
     const tl = gsap.timeline({ onComplete: () => { busy = false; } });
     tl.to(veil.material, { opacity: 0.86, duration: dur(0.6), ease: 'power2.out' }, 0)
       .to(it.root.position, { ...vec(target), duration: dur(1.0), ease: 'power3.inOut' }, 0)
       .to(it.root.scale, { x: scale, y: scale, z: scale, duration: dur(1.0), ease: 'power3.inOut' }, 0)
-      .to({ t: 0 }, { t: 1, duration: dur(1.0), ease: 'power3.inOut', onUpdate() { it.root.quaternion.slerpQuaternions(from, quat, this.targets()[0].t); } }, 0);
+      .to(it.orient.position, { ...vec(it.center), duration: dur(1.0), ease: 'power3.inOut' }, 0)
+      .to({ t: 0 }, { t: 1, duration: dur(1.0), ease: 'power3.inOut', onUpdate() {
+        const t = this.targets()[0].t;
+        it.root.quaternion.slerpQuaternions(from, quat, t);
+        it.orient.quaternion.slerpQuaternions(oFrom, upright, t);
+      } }, 0);
   }
 
   function close(then?: () => void) {
@@ -236,6 +321,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     if (!it || busy) return;
     busy = true;
     const from = it.root.quaternion.clone();
+    const oFrom = it.orient.quaternion.clone();
     const tl = gsap.timeline({
       onComplete: () => {
         busy = false;
@@ -249,7 +335,12 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     tl.to(it.spin.rotation, { x: 0, y: Math.round(it.spin.rotation.y / (Math.PI * 2)) * Math.PI * 2, duration: dur(0.7), ease: 'power2.inOut', onComplete: () => { yaw = 0; phase = 0; autoSpin = 0; } }, 0)
       .to(it.root.position, { ...vec(it.home.pos), duration: dur(0.9), ease: 'power3.inOut' }, 0.05)
       .to(it.root.scale, { x: 1, y: 1, z: 1, duration: dur(0.9), ease: 'power3.inOut' }, 0.05)
-      .to({ t: 0 }, { t: 1, duration: dur(0.9), ease: 'power3.inOut', onUpdate() { it.root.quaternion.slerpQuaternions(from, it.home.quat, this.targets()[0].t); } }, 0.05)
+      .to(it.orient.position, { ...vec(it.home.orientPos), duration: dur(0.9), ease: 'power3.inOut' }, 0.05)
+      .to({ t: 0 }, { t: 1, duration: dur(0.9), ease: 'power3.inOut', onUpdate() {
+        const t = this.targets()[0].t;
+        it.root.quaternion.slerpQuaternions(from, it.home.quat, t);
+        it.orient.quaternion.slerpQuaternions(oFrom, it.home.orientQuat, t);
+      } }, 0.05)
       .to(veil.material, { opacity: 0, duration: dur(0.6), ease: 'power2.inOut' }, 0.3);
   }
 
@@ -288,6 +379,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
 
   // Loop runs only while the desk is on screen.
   const clock = new THREE.Clock();
+  let flightT = 0;
   const frame = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
     // Camera: gentle mouse sway at rest; held still while an object is presented.
@@ -304,6 +396,30 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
       autoSpin = Math.min(1, autoSpin + dt * 0.8);
       if (autoSpin > 0) phase += dt * 0.7;
       selected.spin.rotation.y = yaw + Math.sin(phase) * 0.55 * Math.max(0, autoSpin);
+    }
+    // Toy airplane: loops in front of the wall, banking into the turns.
+    if (flyer && flyer.def.flight) {
+      const f = flyer.def.flight;
+      // Pauses while hovered so it is easy to click.
+      flightT += opts.reduced || hovered === flyer ? 0 : dt / f.seconds;
+      const a = flightT * Math.PI * 2 + (opts.reduced ? Math.PI * 0.62 : 0);
+      const [rx, rz] = f.radius;
+      const pos = new THREE.Vector3(f.center[0] + Math.cos(a) * rx, f.center[1] + Math.sin(a * 2) * 0.06, f.center[2] + Math.sin(a) * rz);
+      const vel = new THREE.Vector3(-Math.sin(a) * rx, Math.cos(a * 2) * 0.12, Math.cos(a) * rz);
+      flyer.root.position.copy(pos);
+      flyer.root.lookAt(flyer.root.position.clone().add(vel));
+      flyer.root.rotateZ(-Math.cos(a) * 0.25);
+      if (flyer.prop && !opts.reduced) flyer.prop.rotation.z += dt * 40;
+      if (banner && bannerBase && !opts.reduced) {
+        const arr = banner.geometry.attributes.position.array as Float32Array;
+        for (let i = 0; i < arr.length; i += 3) {
+          const z = bannerBase[i + 2];
+          const trail = Math.min(1, Math.max(0, (-z - 0.2) / 0.78));
+          arr[i] = bannerBase[i] + Math.sin(z * 14 + clock.elapsedTime * 7) * 0.02 * trail;
+        }
+        banner.geometry.attributes.position.needsUpdate = true;
+        banner.geometry.computeVertexNormals();
+      }
     }
     renderer.render(scene, camera);
   };

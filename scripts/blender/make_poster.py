@@ -30,7 +30,8 @@ w = h * aspect
 paper = 0.0015
 
 # Face: a plane with the print, UVs spanning the whole image.
-bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -paper, 0), rotation=(1.5708, 0, 0))
+# Sits a hair in front of the paper block so the two faces don't z-fight.
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -paper - 0.0006, 0), rotation=(1.5708, 0, 0))
 face = bpy.context.object
 face.name = "print"
 face.scale = (w, h, 1)

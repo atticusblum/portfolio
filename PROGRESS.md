@@ -33,16 +33,21 @@
   - Cleaned with `scripts/blender/clean_jbl.py` (Blender 5.3.0, installed Nov 27): detached hook piece removed (908 faces), watertight (0 open edges), 36.4 degree tilt corrected, depth rescaled to the JBL spec (97 x 46 mm body), three raised buttons and a recessed logo plate in the body's own red. 1024 px WebP textures, quantized mesh, `orient-model.mjs` run (no rotation needed).
   - Still visible from the AI: a dark dent and a small bump on the grille, a notch at the top rim, a stray triangle on the back edge.
   - Before/after renders: `review/jbl-before-after.png` (not in git). Earlier versions and the raw download: `assets/_source/`.
-- Object plan (nothing generated yet):
-  | Object | Method | What Atticus provides |
+- Full desk and wall built (Nov 27, not committed). 17 models in `assets/models/` (2.0 MB total):
+  | Object | How it was made | Placeholder parts |
   |---|---|---|
-  | Guitar | Blender build traced from the front photo, photo on the face | Guitar make/model or body length |
-  | Journal | Blender, `make_journal.py` | 3 measurements, a straight-on cover photo |
-  | Ice axe | Blender build (thin shaft and leash fail in scans and AI) | Confirm 66 cm length |
-  | Shirt | Blender, `make_shirt.py` | Design file (PNG), shirt color |
-  | Posters | Blender, `make_poster.py`, one per poster | Real height of each poster |
-  | Supplements | Free-tier generator (Meshy.ai free account) from supplements-1.jpg | Sign up, upload, download the .glb |
-- Blender scripts in `scripts/blender/`: clean_jbl and render_views have run; make_journal, make_poster, make_shirt are syntax-checked only.
+  | Ice axe | `make_silhouette.py` from ice-axe-2 photo, 66 cm (from the "66" on the shaft) | Length unconfirmed |
+  | Guitar | `make_silhouette.py` from guitar-1-front photo with a deep body section | 104 cm is a typical dreadnought, not measured |
+  | Mac | `make_laptop.py`, 14-inch MacBook Pro proportions | Screen is a flat green placeholder (home screen in Phase 5) |
+  | Supplements | `make_supplements.py` with real labels cut from supplements-1 photo | Sizes from photo proportions |
+  | Toy airplane | `make_airplane.py`, generic toy plane, loops with a "Find me on LinkedIn" banner, click opens LinkedIn | No photo of the real one |
+  | Journal | `make_journal.py`, A5 placeholder size, flat grey cover with band | Size, cover photo |
+  | Shirt | `make_shirt.py`, blank grey T-shirt | Design file, real color |
+  | Posters (8) | `make_poster.py` from your poster files (white margin trimmed on Matterhorn) | Real sizes |
+  | JBL Clip | AI + Blender cleanup (above) | |
+- Scene: wall (ice axe, shirt, 8 posters in two rows, one taped open slot), desk (JBL, journal lying flat, Mac, supplements), guitar leaning on the floor, plane flying a loop over the left wall. Lying/leaning objects straighten when floated out. Supplements are not clickable. Object list collapsed behind an "Objects (15)" toggle.
+- Checked: 1512x744 (Chrome, real clicks: journal, guitar, posters, plane hover, list), 1440x900, 1920x1080. No console errors.
+- New scripts: `scripts/blender/make_silhouette.py`, `make_laptop.py`, `make_supplements.py`, `make_airplane.py`; `scripts/supplement-labels.mjs`, `scripts/poster-images.mjs`. Build inputs (cutouts, labels, trimmed posters, built copies) in `assets/_source/` (not in git).
 
 ## Decisions (Nov 26, 2026)
 - Repo `atticusblum/portfolio` (the `atticusblum.github.io` repo is an older site, left alone).
@@ -55,16 +60,15 @@
 
 ## Next
 - Atticus reviews the Phase 3 prototype and approves the push.
-- Atticus reviews the cleaned JBL Clip and approves a commit.
-- Run make_poster.py for the posters once their real heights are known.
+- Atticus reviews the full desk and approves a commit.
+- Real measurements (posters, journal, guitar, ice axe), shirt design file, journal cover photo, toy airplane photo: each is a rerun of one script.
 - Approve copy in `content/intro.md`, then replace the [Placeholder] lines in `content/landing.md`.
-- Phase 4: full desk and wall scene with every object at equal weight.
+- Phase 4 is built (above). Next: Phase 5, each object's full behavior.
 
 ## Placeholders still in use
 - Title card line and hero tagline (`content/landing.md`).
 - Map labels in `content/landing.md` (elevations 5000/6000, scale 1/2 and 1 mi) are decoration, not real data.
 - Stub sections: work, personal, contact.
-- 3D models: `assets/models/ice-axe.glb`, `jbl-clip.glb`, `mac.glb` are grey stand-ins.
 - Object panel text in `content/objects.md`.
 - Favicon (grey square).
 - `content/site.md` is unused since Phase 2; can be removed with OK.

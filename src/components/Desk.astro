@@ -1,13 +1,13 @@
 ---
 import { deskObjects } from '../data/objects';
 interface Props {
-  desk: { label: string; hint: string; rotate: string; close: string; list: string };
+  desk: { label: string; hint: string; rotate: string; close: string; list: string; banner: string };
   objects: Record<string, { kind: string; title: string; body: string }>;
 }
 const { desk, objects } = Astro.props;
-const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
+const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: o.id, link: o.link, ...objects[o.content] }));
 ---
-<section id="desk" class="desk" data-station="desk" data-copy={JSON.stringify(Object.fromEntries(list.map((o) => [o.id, o])))}>
+<section id="desk" class="desk" data-station="desk" data-banner={desk.banner} data-copy={JSON.stringify(Object.fromEntries(list.map((o) => [o.id, o])))}>
   <div class="canvas" aria-hidden="true"></div>
 
   <p class="label">{desk.label}</p>
@@ -15,7 +15,12 @@ const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
   <div class="tip" aria-hidden="true"></div>
 
   <nav class="list" aria-label={desk.list}>
-    {list.map((o) => <button type="button" data-object={o.id}>{o.title}</button>)}
+    <button type="button" class="toggle" aria-expanded="false" aria-controls="desk-objects">{desk.list} ({list.length}) <span aria-hidden="true">+</span></button>
+    <div id="desk-objects" class="items" hidden>
+    {list.map((o) => o.link
+      ? <a href={o.link} target="_blank" rel="noopener">{o.title} ↗</a>
+      : <button type="button" data-object={o.id}>{o.title}</button>)}
+    </div>
   </nav>
 
   <aside class="panel" aria-live="polite" hidden>
@@ -31,7 +36,7 @@ const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
   .desk { position: relative; height: 100vh; min-height: 640px; overflow: hidden; scroll-snap-align: start; background: #e8e6dc; }
   .canvas, .canvas :global(canvas) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-  .label, .hint, .list button, .kind, .rotate, .close, .tip {
+  .label, .hint, .list a, .list button, .kind, .rotate, .close, .tip {
     font-family: var(--font-body); text-transform: uppercase; letter-spacing: 0.08em;
   }
   .label { position: absolute; left: 4.2vw; top: clamp(70px, 6vw, 110px); margin: 0; font-size: clamp(12px, 0.8vw, 15px); color: var(--color-accent); z-index: 2; }
@@ -43,12 +48,17 @@ const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
     transition: opacity 0.2s;
   }
 
-  .list { position: absolute; left: 4.2vw; bottom: clamp(22px, 2.6vw, 44px); display: flex; gap: 18px; z-index: 2; }
-  .list button {
+  .list { position: absolute; left: 4.2vw; bottom: clamp(22px, 2.6vw, 44px); z-index: 2; max-width: 36vw; }
+  .items { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; padding: 12px 14px; background: rgb(238 237 229 / 0.92); border-radius: 10px; }
+  .items[hidden] { display: none; }
+  .list { display: flex; flex-direction: column-reverse; align-items: flex-start; }
+  .toggle { color: var(--color-accent) !important; }
+  .list a, .list button {
     font-size: clamp(11px, 0.72vw, 14px); color: var(--color-ink); background: none; border: 0; padding: 4px 0; cursor: pointer;
     border-bottom: 1.5px solid transparent;
   }
-  .list button:hover, .list button[aria-pressed='true'] { border-color: var(--color-accent); color: var(--color-accent); }
+  .list a { text-decoration: none; }
+  .list a:hover, .list button:hover, .list button[aria-pressed='true'] { border-color: var(--color-accent); color: var(--color-accent); }
 
   .panel {
     position: absolute; right: 6vw; top: 50%; transform: translateY(-50%); width: min(30vw, 440px); z-index: 3;
@@ -101,6 +111,7 @@ const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
       const { createDesk } = await import('../scripts/desk/scene');
       api = await createDesk(canvasBox, {
         reduced,
+        bannerText: section.dataset.banner ?? '',
         onSelect: (def) => show(def?.id ?? null),
         onHover: (def, x, y) => {
           tip.style.opacity = def ? '1' : '0';
@@ -125,4 +136,13 @@ const list = deskObjects.map((o) => ({ id: o.id, ...objects[o.content] }));
     if (api) api.select(id); else pending = id;
   }));
   panel.querySelector('.close')!.addEventListener('click', () => api?.close());
+
+  const toggle = section.querySelector<HTMLButtonElement>('.toggle')!;
+  const items = section.querySelector<HTMLElement>('#desk-objects')!;
+  toggle.addEventListener('click', () => {
+    const open = items.hidden;
+    items.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.querySelector('span')!.textContent = open ? '−' : '+';
+  });
 </script>
