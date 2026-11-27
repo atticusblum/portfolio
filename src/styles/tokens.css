@@ -1,0 +1,12 @@
+/* Placeholder tokens. Final accent color and fonts are chosen in Phase 2. */
+:root {
+  --color-bg: #f2f0ea;
+  --color-ink: #1a1a1a;
+  --color-muted: #6b6b6b;
+  --color-accent: #3a5a40;
+
+  --font-display: ui-serif, Georgia, "Times New Roman", serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}

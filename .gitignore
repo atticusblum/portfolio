@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.DS_Store
+
+# Repo is public. Keep originals and unapproved drafts out of git.
+assets/
+references/
+content/*.md
+!content/site.md
