@@ -21,5 +21,3 @@ design-hero.html
 review/
 __pycache__/
 
-# Resume stays local until Atticus decides about the phone number.
-public/resume/

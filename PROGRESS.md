@@ -58,7 +58,7 @@
 
 - Phase 5, round 2 (Nov 27):
   - Mac: clicking it flies the camera into the laptop screen, then the home screen fades in; leaving reverses the flight. Photoshop icon is the official logo (redrawn as SVG). Photoshop gallery = Atticus's designs from `assets/mac assets/` (Harvey Lieberman Class of 2026, Senior Prom 2026, Winter 2026-27 schedule); the wall posters are no longer in it. Professional Material opens Resume.pdf in a document window.
-  - Resume: converted from the .docx (Word's AppleScript export timed out on a prompt; interim PDF made from the document text). Lives in `public/resume/`, which is gitignored until Atticus decides about the phone number on it. Until then the live site's Resume link will 404.
+  - Resume: `public/resume/Atticus-Blum-Resume.pdf`, made from the .docx text (Word's export timed out on a prompt), phone number removed at Atticus's request. Email and LinkedIn stay. An exact Word export can replace it under the same filename.
   - Shirt: Built for State (Football version, page 1 of the PDF) on a long-sleeve white dri-fit shirt, `make_shirt.py --long --sheen`.
   - Ice axe: "Open the map" opens a topo map of Mount Rainier, Mount Adams, and Mount St. Helens at their real positions and elevations. Clicking a peak shows a rotating slideshow (placeholder slides) and placeholder text. Real photos go in `src/assets/climbs/<rainier|adams|st-helens>-1.jpg`, -2, ...; copy in `content/climbs.md`.
   - Journal, guitar, JBL Clip: placeholder text plus a "Coming soon" button.
@@ -74,7 +74,7 @@
 
 ## Next
 - Atticus reviews the Phase 3 prototype and approves the push.
-- Atticus decides: phone number on the public resume; which sport version of Built for State goes on the shirt.
+- Atticus decides: which sport version of Built for State goes on the shirt.
 - Climb photos and stories for the three peaks.
 - Real measurements (posters, journal, guitar, ice axe), shirt design file, journal cover photo, toy airplane photo: each is a rerun of one script.
 - Approve copy in `content/intro.md`, then replace the [Placeholder] lines in `content/landing.md`.
