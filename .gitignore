@@ -12,6 +12,7 @@ content/*.md
 !content/landing.md
 !content/objects.md
 !content/mac.md
+!content/climbs.md
 
 # Local review files
 design-options.html
@@ -19,3 +20,6 @@ design-hero.html
 .claude/
 review/
 __pycache__/
+
+# Resume stays local until Atticus decides about the phone number.
+public/resume/

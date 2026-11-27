@@ -8,12 +8,15 @@ import Desk from '../components/Desk.astro';
 import { frontmatter as deskCopy } from '../../content/objects.md';
 import MacDesktop from '../components/MacDesktop.astro';
 import { frontmatter as macCopy } from '../../content/mac.md';
+import ClimbMap from '../components/ClimbMap.astro';
+import { frontmatter as climbsCopy } from '../../content/climbs.md';
 import { frontmatter as copy } from '../../content/landing.md';
 ---
 <Base title={copy.titleCard.name}>
   <TitleCard {...copy.titleCard} />
   <CursorTrail />
   <MacDesktop copy={macCopy} />
+  <ClimbMap copy={climbsCopy} />
   <SiteMenu name={copy.titleCard.name} items={copy.menu} />
   <main>
     <Hero greeting={copy.greeting} hero={copy.hero} map={copy.map} />

@@ -25,6 +25,8 @@ type Item = {
 export type DeskOptions = {
   reduced: boolean;
   bannerText: string;
+  /** The Mac is entered, not floated out: called when the camera reaches its screen. */
+  onMacEntered?: () => void;
   screenLabels: [string, string];
   onSelect: (def: DeskObject | null) => void;
   onHover: (def: DeskObject | null, x: number, y: number) => void;
@@ -205,7 +207,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
-    const mat = new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.55, roughness: 0.25 });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.6, roughness: 0.7, envMapIntensity: 0.2 });
     (macScreen as THREE.Mesh).material = mat;
     // Box UVs from Blender: front face spans the full texture after remapping by bounds.
     const g = (macScreen as THREE.Mesh).geometry;
@@ -307,6 +309,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   let busy = false;
   let drag: { x: number; y: number; moved: boolean } | null = null;
   const sway = { x: 0, y: 0, tx: 0, ty: 0 };
+  let inMac = false; // camera is flying into, sitting at, or leaving the Mac screen
   let autoSpin = 0; // 0..1 strength of the idle sway
   let yaw = 0; // drag rotation
   let phase = 0;
@@ -336,6 +339,10 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
 
   // Float out: in front of the camera, left of center (the panel sits on the right).
   function select(it: Item) {
+    if (it.def.id === 'mac' && opts.onMacEntered) {
+      if (selected) return close(() => enterMac());
+      return enterMac();
+    }
     if (it.def.link) {
       window.open(it.def.link, '_blank', 'noopener');
       return;
@@ -421,7 +428,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
       autoSpin = 0;
       return;
     }
-    if (!selected && !busy) setHover(pick(e), e);
+    if (!selected && !busy && !inMac) setHover(pick(e), e);
   });
   el.addEventListener('pointerleave', () => { if (!selected) setHover(null); sway.tx = sway.ty = 0; });
   el.addEventListener('pointerdown', (e) => {
@@ -432,6 +439,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     const wasDrag = drag?.moved;
     drag = null;
     if (wasDrag) { autoSpin = -1.2; return; } // resume turning after a pause
+    if (inMac) return;
     const it = pick(e);
     if (selected) { if (it !== selected) close(); return; }
     if (it) select(it);
@@ -444,7 +452,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   const frame = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
     // Camera: gentle mouse sway at rest; held still while an object is presented.
-    if (!selected) {
+    if (!selected && !inMac) {
       const k = opts.reduced ? 1 : 0.05;
       const amt = opts.reduced ? 0 : 1;
       sway.x += (sway.tx * amt - sway.x) * k;
@@ -515,7 +523,69 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
     return new DOMRect(x0, y0, x1 - x0, y1 - y0);
   };
 
+  // Fly the camera into the Mac until its screen fills the view, then hand off to the home screen.
+  const view = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
+  function enterMac() {
+    if (!macScreen || inMac || busy) return;
+    inMac = true;
+    setHover(null);
+    const m = macScreen as THREE.Mesh;
+    m.updateWorldMatrix(true, false);
+    m.geometry.computeBoundingBox();
+    const bb = m.geometry.boundingBox!;
+    const center = bb.getCenter(new THREE.Vector3()).applyMatrix4(m.matrixWorld);
+    // Screen normal: average the vertex normals that face the camera.
+    const nrm = m.geometry.attributes.normal;
+    const toCam = camera.position.clone().sub(center).normalize();
+    const nm = new THREE.Matrix3().getNormalMatrix(m.matrixWorld);
+    const n = new THREE.Vector3();
+    const v = new THREE.Vector3();
+    for (let i = 0; i < nrm.count; i++) {
+      v.fromBufferAttribute(nrm, i).applyMatrix3(nm).normalize();
+      if (v.dot(toCam) > 0.5) n.add(v);
+    }
+    n.normalize();
+    // Distance so the screen's height fills ~92% of the view.
+    const size = bb.getSize(new THREE.Vector3()).multiply(new THREE.Vector3().setFromMatrixScale(m.matrixWorld));
+    const h = Math.max(size.y, size.z) * 0.9;
+    const w = size.x;
+    const fov = THREE.MathUtils.degToRad(camera.fov);
+    const d = Math.max(h / 2 / Math.tan(fov / 2), w / 2 / (Math.tan(fov / 2) * camera.aspect)) * 0.94;
+    const toPos = center.clone().addScaledVector(n, d);
+    view.pos.copy(camera.position);
+    view.look.copy(REST.look);
+    const fromPos = camera.position.clone();
+    const fromLook = REST.look.clone();
+    gsap.to({ t: 0 }, {
+      t: 1, duration: dur(1.5), ease: 'power3.inOut',
+      onUpdate() {
+        const t = this.targets()[0].t;
+        camera.position.lerpVectors(fromPos, toPos, t);
+        camera.lookAt(new THREE.Vector3().lerpVectors(fromLook, center, t));
+      },
+      onComplete: () => opts.onMacEntered?.(),
+    });
+  }
+  function exitMac() {
+    if (!inMac) return;
+    const fromPos = camera.position.clone();
+    const fromDir = camera.getWorldDirection(new THREE.Vector3());
+    const fromLook = fromPos.clone().addScaledVector(fromDir, 1);
+    const toPos = new THREE.Vector3(REST.pos.x, REST.pos.y, REST.pos.z + backOff);
+    gsap.to({ t: 0 }, {
+      t: 1, duration: dur(1.3), ease: 'power3.inOut',
+      onUpdate() {
+        const t = this.targets()[0].t;
+        camera.position.lerpVectors(fromPos, toPos, t);
+        camera.lookAt(new THREE.Vector3().lerpVectors(fromLook, REST.look, t));
+      },
+      onComplete: () => { inMac = false; sway.x = sway.y = 0; },
+    });
+  }
+
   return {
+    enterMac,
+    exitMac,
     screenRect,
     select: (id: string) => { const it = items.find((i) => i.def.id === id); if (it) select(it); },
     close: () => close(),

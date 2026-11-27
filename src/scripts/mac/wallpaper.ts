@@ -35,20 +35,21 @@ export function drawHomeTexture(g: CanvasRenderingContext2D, w: number, h: numbe
   g.fillRect(0, 0, w, h * 0.045);
   const s = h * 0.09;
   const x = w - s * 1.9;
-  // Photoshop-style app icon (our own glyph) and a folder.
-  g.fillStyle = PINE.paper;
-  roundRect(g, x, h * 0.12, s, s, s * 0.22);
+  // Photoshop app icon and a folder.
+  g.fillStyle = '#001E36';
+  roundRect(g, x, h * 0.12, s, s, s * 0.2);
   g.fill();
-  g.fillStyle = PINE.base;
-  g.fillRect(x + s * 0.22, h * 0.12 + s * 0.22, s * 0.38, s * 0.38);
-  g.globalAlpha = 0.6;
-  g.fillRect(x + s * 0.4, h * 0.12 + s * 0.4, s * 0.38, s * 0.38);
-  g.globalAlpha = 1;
+  g.fillStyle = '#31A8FF';
+  g.font = `600 ${Math.round(s * 0.46)}px "Helvetica Neue", Arial, sans-serif`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('Ps', x + s / 2, h * 0.12 + s * 0.54);
+  g.textBaseline = 'alphabetic';
   g.fillStyle = '#d9c79a';
   roundRect(g, x, h * 0.12 + s * 1.7, s, s * 0.78, s * 0.12);
   g.fill();
   g.fillStyle = PINE.paper;
-  g.font = `500 ${Math.round(h * 0.026)}px "DM Mono", monospace`;
+  g.font = `500 ${Math.round(h * 0.018)}px "DM Mono", monospace`;
   g.textAlign = 'center';
   g.fillText(labels[0], x + s / 2, h * 0.12 + s * 1.32);
   g.fillText(labels[1], x + s / 2, h * 0.12 + s * 2.85);

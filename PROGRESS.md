@@ -56,6 +56,13 @@
   - Design work web copies: `src/assets/work/` via `scripts/work-images.mjs`.
   - Next objects need decisions: ice axe walkthrough concept, journal concept and content, guitar videos, Spotify (deferred), resume PDF, shirt design.
 
+- Phase 5, round 2 (Nov 27):
+  - Mac: clicking it flies the camera into the laptop screen, then the home screen fades in; leaving reverses the flight. Photoshop icon is the official logo (redrawn as SVG). Photoshop gallery = Atticus's designs from `assets/mac assets/` (Harvey Lieberman Class of 2026, Senior Prom 2026, Winter 2026-27 schedule); the wall posters are no longer in it. Professional Material opens Resume.pdf in a document window.
+  - Resume: converted from the .docx (Word's AppleScript export timed out on a prompt; interim PDF made from the document text). Lives in `public/resume/`, which is gitignored until Atticus decides about the phone number on it. Until then the live site's Resume link will 404.
+  - Shirt: Built for State (Football version, page 1 of the PDF) on a long-sleeve white dri-fit shirt, `make_shirt.py --long --sheen`.
+  - Ice axe: "Open the map" opens a topo map of Mount Rainier, Mount Adams, and Mount St. Helens at their real positions and elevations. Clicking a peak shows a rotating slideshow (placeholder slides) and placeholder text. Real photos go in `src/assets/climbs/<rainier|adams|st-helens>-1.jpg`, -2, ...; copy in `content/climbs.md`.
+  - Journal, guitar, JBL Clip: placeholder text plus a "Coming soon" button.
+
 ## Decisions (Nov 26, 2026)
 - Repo `atticusblum/portfolio` (the `atticusblum.github.io` repo is an older site, left alone).
 - 3D models: AI-generated from reference photos.
@@ -67,10 +74,11 @@
 
 ## Next
 - Atticus reviews the Phase 3 prototype and approves the push.
-- Atticus reviews Phase 5 so far (plane, window light, Mac) and approves a commit.
+- Atticus decides: phone number on the public resume; which sport version of Built for State goes on the shirt.
+- Climb photos and stories for the three peaks.
 - Real measurements (posters, journal, guitar, ice axe), shirt design file, journal cover photo, toy airplane photo: each is a rerun of one script.
 - Approve copy in `content/intro.md`, then replace the [Placeholder] lines in `content/landing.md`.
-- Phase 4 is live. Phase 5 in progress: Mac done; ice axe, journal, guitar, JBL next.
+- Phase 5 in progress: Mac and ice axe done; journal, guitar, JBL Clip are placeholders.
 
 ## Placeholders still in use
 - Title card line and hero tagline (`content/landing.md`).

@@ -7,6 +7,8 @@
               Placed on the chest. Without it the shirt is blank.
   --color     shirt fabric color 0-1 RGB (default off-white).
   --width_cm  chest width, armpit to armpit (default 52, a men's M; PLACEHOLDER).
+  --long      long sleeves (flat lay, sleeves angled down to the wrist).
+  --sheen     slightly glossy fabric (dri-fit).
 
 The outline is a hand-placed T-shirt silhouette, extruded to fabric thickness with
 soft edges. Hangs flat, front facing -Y in Blender (+Z in glTF). A wall hanger or a
@@ -37,6 +39,15 @@ half = [
     (0.50, 0.12), (0.50, -0.72),                # side seam to hem
     (0.00, -0.74),                              # hem center
 ]
+if "--long" in a:
+    half = [
+        (0.00, 0.62), (0.16, 0.66), (0.26, 0.64),   # collar to shoulder
+        (0.52, 0.56), (0.66, 0.36), (0.86, -0.24),  # shoulder seam, elbow, wrist (outer)
+        (0.92, -0.32), (0.78, -0.36), (0.74, -0.30),  # cuff
+        (0.56, 0.12),                               # inner sleeve to underarm
+        (0.50, 0.08), (0.50, -0.72),                # side seam to hem
+        (0.00, -0.74),                              # hem center
+    ]
 outline = half + [(-x, z) for x, z in reversed(half[1:-1])]
 # Collar dip at the front.
 outline[0] = (0.0, 0.56)
@@ -62,14 +73,15 @@ shirt = bpy.context.view_layer.objects.active
 # The curve was drawn in X/Y; stand it up so the front faces -Y.
 shirt.rotation_euler = (1.5708, 0, 0)
 bpy.ops.object.transform_apply(rotation=True)
-shirt.data.materials.append(common.material("fabric", color=color, roughness=0.95))
+shirt.data.materials.append(common.material("fabric", color=color, roughness=0.62 if "--sheen" in a else 0.95))
 
 if design:
     img = bpy.data.images.load(os.path.abspath(design))
     aspect = img.size[0] / img.size[1]
     dw = chest * 0.6
     dh = dw / aspect
-    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -0.0025, chest * 0.22 - dh / 2), rotation=(1.5708, 0, 0))
+    # Sits just in front of the fabric's front face (fabric is ~4 mm thick, centered).
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -0.0045, chest * 0.24 - dh / 2), rotation=(1.5708, 0, 0))
     decal = bpy.context.object
     decal.name = "design"
     decal.scale = (dw, dh, 1)
@@ -80,7 +92,10 @@ if design:
     bsdf = mat.node_tree.nodes["Principled BSDF"]
     mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     mat.node_tree.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
-    if hasattr(mat, "blend_method"):
+    # Transparent background of the print exports as glTF alpha blend.
+    if hasattr(mat, "surface_render_method"):
+        mat.surface_render_method = "BLENDED"
+    elif hasattr(mat, "blend_method"):
         mat.blend_method = "BLEND"
     decal.data.materials.append(mat)
 

@@ -5,11 +5,12 @@ interface Props {
   copy: {
     menuName: string; back: string;
     icons: { photoshop: string; folder: string };
-    photoshop: { title: string; intro: string; back: string; items: Item[]; coming: string[]; comingNote: string };
-    folder: { title: string; files: { name: string; note: string }[] };
+    photoshop: { title: string; intro: string; back: string; items: Item[] };
+    folder: { title: string; files: { name: string; note: string; href?: string }[] };
   };
 }
 const { copy } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const fulls = import.meta.glob<{ default: ImageMetadata }>('../assets/work/*.webp', { eager: true });
 const thumbs = import.meta.glob<{ default: ImageMetadata }>('../assets/work/thumbs/*.webp', { eager: true });
 const work = copy.photoshop.items
@@ -32,7 +33,7 @@ const work = copy.photoshop.items
 
   <div class="icons">
     <button type="button" class="icon" data-open="photoshop">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" class="app" /><rect x="16" y="16" width="22" height="22" class="layer" /><rect x="26" y="26" width="22" height="22" class="layer2" /></svg>
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="11" fill="#001E36" /><text x="32" y="41.5" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="27" fill="#31A8FF" letter-spacing="-0.5">Ps</text></svg>
       <span>{copy.icons.photoshop}</span>
     </button>
     <button type="button" class="icon" data-open="folder">
@@ -53,9 +54,6 @@ const work = copy.photoshop.items
               <span>{it.title}</span>
             </button></li>
           ))}
-          {copy.photoshop.coming.map((t) => (
-            <li><div class="tile soon"><div class="soon-box">{copy.photoshop.comingNote}</div><span>{t}</span></div></li>
-          ))}
         </ul>
       </div>
       <div class="detail-view" hidden>
@@ -73,9 +71,16 @@ const work = copy.photoshop.items
     <div class="titlebar"><button type="button" class="dot close" aria-label="Close"></button><span class="dot"></span><span class="dot"></span><p>{copy.folder.title}</p></div>
     <ul class="files">
       {copy.folder.files.map((f) => (
-        <li><svg viewBox="0 0 20 24" aria-hidden="true"><path d="M2 1 h11 l5 5 v17 h-16 z" /><path d="M13 1 v5 h5" /></svg><span class="fname">{f.name}</span><span class="fnote">{f.note}</span></li>
+        <li><button type="button" class="file" data-href={f.href ? base + f.href : ''} data-name={f.name} disabled={!f.href}>
+          <svg viewBox="0 0 20 24" aria-hidden="true"><path d="M2 1 h11 l5 5 v17 h-16 z" /><path d="M13 1 v5 h5" /></svg><span class="fname">{f.name}</span><span class="fnote">{f.note}</span>
+        </button></li>
       ))}
     </ul>
+  </section>
+
+  <section class="window doc" data-window="viewer" hidden aria-label="Document">
+    <div class="titlebar"><button type="button" class="dot close" aria-label="Close"></button><span class="dot"></span><span class="dot"></span><p class="doc-title"></p><a class="doc-open" target="_blank" rel="noopener">Open in new tab ↗</a></div>
+    <iframe class="doc-frame" title="Document"></iframe>
   </section>
 
   <script type="application/json" class="work-data" set:html={JSON.stringify(work.map((w) => ({ title: w.title, body: w.body, src: w.full!.src, w: w.full!.width, h: w.full!.height })))}></script>
@@ -100,9 +105,6 @@ const work = copy.photoshop.items
   .icon { width: 108px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: 0; color: #eeede5; cursor: pointer; font: inherit; font-size: 12px; text-align: center; padding: 6px; border-radius: 10px; }
   .icon:hover, .icon:focus-visible { background: rgb(238 237 229 / 0.12); }
   .icon svg { width: 64px; height: 64px; filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.25)); }
-  .app { fill: #eeede5; }
-  .layer { fill: #2f5d46; }
-  .layer2 { fill: #2f5d46; opacity: 0.55; }
   .folder { fill: #d9c79a; }
   .folder-line { stroke: #c4af7c; stroke-width: 2; }
 
@@ -123,8 +125,6 @@ const work = copy.photoshop.items
   .tile { width: 100%; display: flex; flex-direction: column; gap: 8px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-size: 12px; text-align: left; color: var(--color-ink); }
   .tile img { width: 100%; height: auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; background: #e8e6dc; transition: transform 0.3s var(--ease-out), box-shadow 0.3s; }
   .tile:hover img, .tile:focus-visible img { transform: translateY(-3px); box-shadow: 0 10px 24px rgb(0 0 0 / 0.15); }
-  .tile.soon { cursor: default; color: var(--color-muted); }
-  .soon-box { width: 100%; aspect-ratio: 3 / 4; border-radius: 6px; border: 1.5px dashed #c9c5b6; display: grid; place-items: center; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
 
   .detail-view { height: 100%; display: grid; grid-template-rows: auto 1fr auto; gap: 14px; }
   .detail-view[hidden] { display: none; }
@@ -136,7 +136,13 @@ const work = copy.photoshop.items
   .nav { display: flex; gap: 18px; }
 
   .files { list-style: none; margin: 0; padding: 18px 22px; }
-  .files li { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-bottom: 1px solid #e3e0d4; font-size: 13px; }
+  .files li { border-bottom: 1px solid #e3e0d4; }
+  .file { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 6px; font: inherit; font-size: 13px; color: var(--color-ink); background: none; border: 0; cursor: pointer; text-align: left; border-radius: 6px; }
+  .file:hover:not(:disabled) { background: #ebe8dc; }
+  .file:disabled { cursor: default; opacity: 0.7; }
+  .window.doc { width: min(70vw, 900px); height: min(86vh, 980px); }
+  .doc-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+  .doc-open { margin-left: auto; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-accent); text-decoration: none; }
   .files svg { width: 18px; height: 22px; fill: #fff; stroke: #8c8778; stroke-width: 1.2; }
   .fnote { margin-left: auto; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
 </style>
@@ -173,6 +179,8 @@ const work = copy.photoshop.items
     document.documentElement.style.overflow = 'hidden';
     if (rect && !reduced) {
       await mac.animate([{ clipPath: clipFor(rect), opacity: 0.6 }, { clipPath: 'inset(0px 0px 0px 0px round 0px)', opacity: 1 }], { duration: 750, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }).finished;
+    } else if (!reduced) {
+      await mac.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: 'ease-out' }).finished;
     }
     mac.querySelector<HTMLElement>('.icon')!.focus();
   }
@@ -181,6 +189,8 @@ const work = copy.photoshop.items
     mac.querySelectorAll<HTMLElement>('.window').forEach((w) => (w.hidden = true));
     if (fromRect && !reduced) {
       await mac.animate([{ clipPath: 'inset(0px 0px 0px 0px round 0px)', opacity: 1 }, { clipPath: clipFor(fromRect), opacity: 0.4 }], { duration: 600, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }).finished;
+    } else if (!reduced) {
+      await mac.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in' }).finished;
     }
     mac.hidden = true;
     clearInterval(tick);
@@ -219,6 +229,17 @@ const work = copy.photoshop.items
       bar.addEventListener('pointerup', () => bar.removeEventListener('pointermove', move), { once: true });
     });
   });
+
+  // Professional Material: files open in a document window.
+  const viewer = mac.querySelector<HTMLElement>('[data-window="viewer"]')!;
+  mac.querySelectorAll<HTMLButtonElement>('.file').forEach((f) => f.addEventListener('click', () => {
+    if (!f.dataset.href) return;
+    viewer.querySelector('.doc-title')!.textContent = f.dataset.name!;
+    viewer.querySelector<HTMLAnchorElement>('.doc-open')!.href = f.dataset.href;
+    const frame = viewer.querySelector<HTMLIFrameElement>('.doc-frame')!;
+    if (frame.src !== new URL(f.dataset.href, location.href).href) frame.src = f.dataset.href;
+    show('viewer');
+  }));
 
   // Photoshop: grid and detail view.
   const ps = mac.querySelector<HTMLElement>('[data-window="photoshop"]')!;

@@ -55,7 +55,7 @@ const poster = (id: string, content: string, x: number, y: number, size: number)
 export const deskObjects: DeskObject[] = [
   // Wall, left to right.
   { id: 'ice-axe', model: 'ice-axe.glb', content: 'iceAxe', surface: 'wall', position: [-1.3, 1.46, wall], rotation: [0, 0, -0.42], size: 0.82, present: [0.1, -0.35, -0.72], standIn: 'ice-axe' },
-  { id: 'shirt', model: 'shirt.glb', content: 'shirt', surface: 'wall', position: [-0.66, 1.48, wall], rotation: [0, 0, 0.03], size: 0.5, present: flat, standIn: 'box' },
+  { id: 'shirt', model: 'shirt.glb', content: 'shirt', surface: 'wall', position: [-0.66, 1.46, wall], rotation: [0, 0, 0.03], size: 0.58, present: flat, standIn: 'box' },
   poster('mt-baker-topo', 'posterMtBaker', 0.22, 1.74, 0.36),
   poster('patagonia', 'posterPatagonia', 0.62, 1.74, 0.36),
   poster('matterhorn', 'posterMatterhorn', 1.01, 1.74, 0.36),

@@ -11,11 +11,13 @@ objects:
   iceAxe:
     kind: Wall · Mountaineering
     title: Ice axe
-    body: "[Placeholder] What the ice axe opens to goes here."
+    cta: Open the map
+    action: climbs
+    body: "[Placeholder] A line about climbing. Open the map to see the peaks."
   shirt:
     kind: Wall · Design
-    title: Shirt
-    body: "[Placeholder] The shirt design and the story behind it. Design file still to come."
+    title: Built for State
+    body: "[Placeholder] The story behind the Built for State shirt."
   posterMtBaker:
     kind: Wall · Poster
     title: Mt. Baker topo
@@ -51,11 +53,13 @@ objects:
   jblClip:
     kind: Desk · Music
     title: JBL Clip
+    cta: Coming soon
     body: "[Placeholder] What the speaker opens to goes here."
   journal:
     kind: Desk · Personal
     title: Journal
-    body: "[Placeholder] What the journal holds. The page-turning view comes in Phase 5."
+    cta: Coming soon
+    body: "[Placeholder] What the journal holds."
   mac:
     kind: Desk · Work
     title: Mac
@@ -67,7 +71,8 @@ objects:
   guitar:
     kind: Floor · Music
     title: Guitar
-    body: "[Placeholder] Videos of me playing, or the guitar plays itself. Coming in Phase 5."
+    cta: Coming soon
+    body: "[Placeholder] A line about playing guitar."
   airplane:
     kind: Air · Connect
     title: LinkedIn

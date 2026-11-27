@@ -1,0 +1,265 @@
+---
+// The ice axe opens to this: a topo map of three Cascade volcanoes. Click a peak
+// for a rotating photo slideshow and a short story. Photos and text are placeholders.
+//
+// Real photos: drop them at src/assets/climbs/<peak id>-1.jpg, -2.jpg, ... (jpg or webp).
+// They replace the placeholder slides with no code changes.
+interface Peak { id: string; name: string; elevation: string; lat: number; lon: number; body: string }
+interface Props { copy: { title: string; intro: string; back: string; mapBack: string; photoNote: string; peaks: Peak[] } }
+const { copy } = Astro.props;
+
+const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/climbs/*.{jpg,jpeg,webp,png}', { eager: true });
+const photosFor = (id: string) =>
+  Object.entries(photos)
+    .filter(([p]) => p.split('/').pop()!.startsWith(`${id}-`))
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+    .map(([, m]) => m.default.src);
+
+// Map frame: a lon/lat window around the three peaks, projected so 1 km is the same both ways.
+const W = -123.3, E = -120.6, S = 45.95, N = 47.05;
+const kx = Math.cos((46.5 * Math.PI) / 180);
+const VW = 1690, VH = Math.round((VW * (N - S)) / ((E - W) * kx));
+const px = (lon: number) => ((lon - W) / (E - W)) * VW;
+const py = (lat: number) => ((N - lat) / (N - S)) * VH;
+const kmPx = (VH / (N - S)) / 111.32; // pixels per km
+
+const peaks = copy.peaks.map((p) => ({ ...p, x: px(p.lon), y: py(p.lat), photos: photosFor(p.id) }));
+const gridLat = [46, 46.5, 47];
+const gridLon = [-123, -122.5, -122, -121.5, -121];
+---
+<div class="climbs" role="dialog" aria-modal="true" aria-label={copy.title} hidden data-peaks={JSON.stringify(peaks)} data-vw={VW} data-vh={VH}>
+  <header class="top">
+    <div>
+      <h2>{copy.title}</h2>
+      <p class="intro">{copy.intro}</p>
+    </div>
+    <button type="button" class="back">{copy.back}</button>
+  </header>
+
+  <div class="map" style={`aspect-ratio: ${VW} / ${VH}`}>
+    <svg viewBox={`0 0 ${VW} ${VH}`} aria-hidden="true">
+      <g class="grid">
+        {gridLat.map((lat) => <g><path d={`M0 ${py(lat)} H${VW}`} /><text x="10" y={py(lat) - 8}>{`${lat.toFixed(1)}°N`}</text></g>)}
+        {gridLon.map((lon) => <g><path d={`M${px(lon)} 0 V${VH}`} /><text x={px(lon) + 8} y={VH - 12}>{`${Math.abs(lon).toFixed(1)}°W`}</text></g>)}
+      </g>
+      <g class="contours"></g>
+      <g class="compass" transform={`translate(${VW - 70} 70)`}>
+        <path d="M0 26 V-26 M-9 -12 L0 -28 L9 -12" />
+        <text y="-36" text-anchor="middle">N</text>
+      </g>
+      <g class="scale" transform={`translate(${VW - 60 - kmPx * 20} ${VH - 50})`}>
+        <path d={`M0 0 H${kmPx * 20} M0 -6 V6 M${kmPx * 10} -4 V4 M${kmPx * 20} -6 V6`} />
+        <text x="0" y="-12">0</text>
+        <text x={kmPx * 20} y="-12" text-anchor="end">20 km</text>
+      </g>
+    </svg>
+
+    {peaks.map((p) => (
+      <button type="button" class="peak" data-id={p.id} style={`left: ${(p.x / VW) * 100}%; top: ${(p.y / VH) * 100}%`}>
+        <svg viewBox="0 0 20 18" aria-hidden="true"><path d="M10 1 L19 17 H1 Z" /></svg>
+        <span class="pname">{p.name}</span>
+        <span class="pelev">{p.elevation}</span>
+      </button>
+    ))}
+  </div>
+
+  <section class="detail" hidden aria-live="polite">
+    <div class="slides" aria-label="Photos">
+      <div class="frames"></div>
+      <div class="dots"></div>
+    </div>
+    <div class="story">
+      <button type="button" class="map-back">← {copy.mapBack}</button>
+      <h3></h3>
+      <p class="elev"></p>
+      <p class="text"></p>
+    </div>
+  </section>
+  <p class="note" hidden>{copy.photoNote}</p>
+</div>
+
+<style>
+  .climbs { position: fixed; inset: 0; z-index: 40; background: var(--color-bg); color: var(--color-ink); display: grid; grid-template-rows: auto 1fr; padding: 26px 4.2vw 30px; overflow: hidden; }
+  .climbs[hidden] { display: none; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+  h2 { margin: 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(40px, 4vw, 72px); line-height: 0.85; color: var(--color-accent); }
+  .intro { margin: 10px 0 0; max-width: 52ch; font-size: 13px; color: var(--color-muted); }
+  .back, .map-back { font: 500 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); background: none; border: 1.5px solid var(--color-accent); border-radius: 99px; padding: 10px 16px; cursor: pointer; }
+  .map-back { border: 0; padding: 4px 0; margin-bottom: 22px; }
+  .back:hover { background: var(--color-accent); color: var(--color-bg); }
+
+  .map { position: relative; align-self: center; justify-self: center; width: min(100%, calc((100vh - 170px) * 1.69)); margin-top: 12px; }
+  .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .grid path { stroke: var(--color-ink); stroke-width: 1; opacity: 0.12; }
+  .grid text, .scale text, .compass text { font: 500 13px var(--font-body); fill: var(--color-muted); }
+  .contours :global(path) { fill: none; stroke: var(--color-accent); stroke-linejoin: round; }
+  .compass path, .scale path { fill: none; stroke: var(--color-ink); stroke-width: 2; stroke-linecap: round; }
+
+  .peak {
+    position: absolute; transform: translate(-50%, -18px); display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: 0; padding: 8px 10px; cursor: pointer; color: var(--color-ink); font: inherit; border-radius: 10px;
+  }
+  .peak svg { width: 22px; height: 20px; fill: var(--color-accent); stroke: var(--color-bg); stroke-width: 1.5; transition: transform 0.3s var(--ease-out); }
+  .pname { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(18px, 1.5vw, 26px); line-height: 1; background: var(--color-bg); padding: 2px 6px; }
+  .pelev { font-size: 11px; letter-spacing: 0.06em; color: var(--color-muted); background: var(--color-bg); padding: 0 6px; }
+  .peak:hover svg, .peak:focus-visible svg { transform: translateY(-3px) scale(1.15); }
+  .peak:hover .pname, .peak:focus-visible .pname { color: var(--color-accent); }
+
+  .detail {
+    position: absolute; inset: 120px 4.2vw 30px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 4vw; align-items: center;
+    background: var(--color-bg); animation: rise 0.5s var(--ease-out) both;
+  }
+  .detail[hidden] { display: none; }
+  .slides { position: relative; height: 100%; max-height: 72vh; display: grid; grid-template-rows: 1fr auto; gap: 14px; }
+  .frames { position: relative; border-radius: 10px; overflow: hidden; background: #dcd9cd; }
+  .frames :global(.frame) { position: absolute; inset: 0; opacity: 0; transition: opacity 0.7s var(--ease-out); }
+  .frames :global(.frame.on) { opacity: 1; }
+  .frames :global(img) { width: 100%; height: 100%; object-fit: cover; }
+  .frames :global(.ph) { width: 100%; height: 100%; display: grid; place-items: center; }
+  .frames :global(.ph svg) { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .frames :global(.ph span) { position: relative; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-bg); background: rgb(29 34 30 / 0.35); padding: 6px 10px; border-radius: 99px; }
+  .dots { display: flex; gap: 8px; justify-content: center; }
+  .dots :global(button) { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; background: rgb(29 34 30 / 0.2); cursor: pointer; }
+  .dots :global(button[aria-current='true']) { background: var(--color-accent); }
+  .story h3 { margin: 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(48px, 5vw, 96px); line-height: 0.85; }
+  .elev { margin: 12px 0 0; font-size: 13px; letter-spacing: 0.06em; color: var(--color-accent); }
+  .text { margin: 22px 0 0; font-size: 14px; line-height: 1.65; max-width: 40ch; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  :global(html.reduced) .detail { animation: none; }
+  :global(html.reduced) .frames :global(.frame) { transition: none; }
+</style>
+
+<script>
+  import { rng, ring } from '../scripts/contours';
+
+  type Peak = { id: string; name: string; elevation: string; x: number; y: number; body: string; photos: string[] };
+  const root = document.querySelector<HTMLElement>('.climbs')!;
+  const peaks: Peak[] = JSON.parse(root.dataset.peaks!);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const note = root.querySelector('.note')!.textContent ?? '';
+
+  // Contours around each peak: more rings for higher peaks. St. Helens opens to the north,
+  // where the 1980 eruption took out the crater wall.
+  const contours = root.querySelector<SVGGElement>('.contours')!;
+  const ns = 'http://www.w3.org/2000/svg';
+  for (const p of peaks) {
+    const elev = parseInt(p.elevation.replace(/\D/g, ''), 10);
+    const count = Math.round(elev / 1100);
+    const R = rng(p.id.length * 97 + elev);
+    const shape = [0.1, R() * 6, 0.06, R() * 6, 0.04, R() * 6];
+    for (let i = 0; i < count; i++) {
+      const r = 10 + i * 13;
+      const sh = shape.map((v, k) => (k % 2 ? v + i * 0.08 : v * (1 + i * 0.06)));
+      const open = p.id === 'st-helens' && i < 4;
+      const start = open ? -Math.PI / 2 + 0.55 : 0;
+      const sweep = open ? Math.PI * 2 - 1.1 : Math.PI * 2;
+      const pts = ring(p.x, p.y, r, r * 0.86, sh, R, start, sweep, 120);
+      const d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L') + (open ? '' : ' Z');
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('stroke-width', i % 5 === 4 ? '2.2' : '1.1');
+      path.setAttribute('opacity', String(Math.max(0.25, 0.85 - i * 0.045)));
+      contours.appendChild(path);
+    }
+  }
+
+  // Faint background terrain so the map reads as a real topo sheet.
+  const T = rng(7);
+  const vw = +root.dataset.vw!, vh = +root.dataset.vh!;
+  for (let c = 0; c < 14; c++) {
+    const cx = T() * vw, cy = T() * vh;
+    if (peaks.some((p) => Math.hypot(p.x - cx, p.y - cy) < 230)) continue;
+    const tshape = [0.14, T() * 6, 0.09, T() * 6, 0.05, T() * 6];
+    const n = 2 + Math.floor(T() * 4);
+    for (let i = 0; i < n; i++) {
+      const r = 14 + i * 16 + T() * 6;
+      const pts = ring(cx, cy, r * (0.9 + T() * 0.6), r * 0.7, tshape, T, 0, Math.PI * 2, 80);
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L') + ' Z');
+      path.setAttribute('stroke-width', '1');
+      path.setAttribute('opacity', '0.13');
+      contours.insertBefore(path, contours.firstChild);
+    }
+  }
+
+  // Placeholder slide: a mountain silhouette on a Pine gradient.
+  const placeholder = (peak: Peak, n: number, total: number) => {
+    const seed = rng(n * 31 + peak.id.length);
+    const ridge = Array.from({ length: 9 }, (_, i) => `${i * 12.5} ${55 - seed() * 18 - (i === 4 ? 22 : 0)}`).join(' L');
+    return `<div class="ph"><svg viewBox="0 0 100 62" preserveAspectRatio="xMidYMid slice">
+      <defs><linearGradient id="g${peak.id}${n}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb8a6"/><stop offset="1" stop-color="#2f5d46"/></linearGradient></defs>
+      <rect width="100" height="62" fill="url(#g${peak.id}${n})"/>
+      <path d="M0 62 L0 ${55} L${ridge} L100 50 L100 62 Z" fill="#1f3d2f" opacity="0.85"/>
+      <path d="M44 33 L50 22 L56 33 L52 31 L50 34 L48 31 Z" fill="#eeede5" opacity="0.9"/>
+    </svg><span>${note} ${n + 1} / ${total}</span></div>`;
+  };
+
+  const detail = root.querySelector<HTMLElement>('.detail')!;
+  const frames = detail.querySelector<HTMLElement>('.frames')!;
+  const dots = detail.querySelector<HTMLElement>('.dots')!;
+  let slide = 0, count = 0, timer = 0;
+
+  const go = (i: number) => {
+    slide = (i + count) % count;
+    frames.querySelectorAll('.frame').forEach((f, k) => f.classList.toggle('on', k === slide));
+    dots.querySelectorAll('button').forEach((d, k) => d.setAttribute('aria-current', String(k === slide)));
+  };
+  const auto = () => {
+    clearInterval(timer);
+    if (!reduced && count > 1) timer = window.setInterval(() => go(slide + 1), 3600);
+  };
+
+  function openPeak(p: Peak) {
+    const srcs = p.photos.length ? p.photos : [null, null, null];
+    count = srcs.length;
+    frames.innerHTML = srcs.map((src, n) => `<div class="frame">${src ? `<img src="${src}" alt="${p.name}, photo ${n + 1}">` : placeholder(p, n, count)}</div>`).join('');
+    dots.innerHTML = srcs.map((_, n) => `<button type="button" aria-label="Photo ${n + 1}"></button>`).join('');
+    dots.querySelectorAll('button').forEach((d, n) => d.addEventListener('click', () => { go(n); auto(); }));
+    detail.querySelector('h3')!.textContent = p.name;
+    detail.querySelector('.elev')!.textContent = p.elevation;
+    detail.querySelector('.text')!.textContent = p.body;
+    detail.hidden = false;
+    go(0);
+    auto();
+    detail.querySelector<HTMLElement>('.map-back')!.focus();
+  }
+  const closePeak = () => {
+    clearInterval(timer);
+    const id = detail.querySelector('h3')!.textContent;
+    detail.hidden = true;
+    [...root.querySelectorAll<HTMLElement>('.peak')].find((b) => b.querySelector('.pname')!.textContent === id)?.focus();
+  };
+  frames.addEventListener('mouseenter', () => clearInterval(timer));
+  frames.addEventListener('mouseleave', auto);
+
+  root.querySelectorAll<HTMLButtonElement>('.peak').forEach((b) => b.addEventListener('click', () => openPeak(peaks.find((p) => p.id === b.dataset.id)!)));
+  detail.querySelector('.map-back')!.addEventListener('click', closePeak);
+
+  let returnFocus: HTMLElement | null = null;
+  const open = () => {
+    returnFocus = document.activeElement as HTMLElement;
+    root.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    if (!reduced) root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, easing: 'ease-out' });
+    root.querySelector<HTMLElement>('.peak')!.focus();
+  };
+  const close = async () => {
+    clearInterval(timer);
+    if (!reduced) await root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, easing: 'ease-in' }).finished;
+    root.hidden = true;
+    detail.hidden = true;
+    document.documentElement.style.overflow = '';
+    returnFocus?.focus();
+  };
+  window.addEventListener('climbs:open', open);
+  root.querySelector('.back')!.addEventListener('click', close);
+  addEventListener('keydown', (e) => {
+    if (root.hidden) return;
+    if (e.key === 'Escape') {
+      e.stopImmediatePropagation();
+      if (!detail.hidden) closePeak();
+      else close();
+    }
+    if (!detail.hidden && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { go(slide + (e.key === 'ArrowRight' ? 1 : -1)); auto(); }
+  }, true);
+</script>
