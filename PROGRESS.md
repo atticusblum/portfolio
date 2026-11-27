@@ -62,6 +62,7 @@
   - Shirt: Built for State, Football version (confirmed by Atticus), on a long-sleeve white dri-fit shirt, `make_shirt.py --long --sheen`.
   - Ice axe: "Open the map" opens a topo map of Mount Rainier, Mount Adams, and Mount St. Helens at their real positions and elevations. Clicking a peak shows a rotating slideshow (placeholder slides) and placeholder text. Real photos go in `src/assets/climbs/<rainier|adams|st-helens>-1.jpg`, -2, ...; copy in `content/climbs.md`.
   - Journal, guitar, JBL Clip: placeholder text plus a "Coming soon" button.
+  - Climbs map restyled after a classic physical map of Washington (Nov 27): generated shaded relief (`scripts/make-relief.mjs` -> `src/assets/map/relief.webp`, stylized terrain from noise-shaped ranges plus real summit cones), elevation tints, hillshade, coast and Puget Sound, Columbia/Snake/Yakima rivers, Canada and state borders, graticule, cities, region names, elevation legend in feet, km/mi scale bars. Geography lives in `src/data/washington.ts`. Climbed peaks (Rainier, Adams, St. Helens) clickable; Glacier Peak and Mount Baker shown as "Next up" (hollow marker, dashed ring, tag), not clickable.
 
 ## Decisions (Nov 26, 2026)
 - Repo `atticusblum/portfolio` (the `atticusblum.github.io` repo is an older site, left alone).

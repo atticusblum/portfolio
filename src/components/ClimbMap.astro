@@ -1,11 +1,16 @@
 ---
-// The ice axe opens to this: a topo map of three Cascade volcanoes. Click a peak
-// for a rotating photo slideshow and a short story. Photos and text are placeholders.
+// The ice axe opens to this: a shaded-relief map of Washington, styled after classic
+// physical maps (elevation tints, hillshading, rivers, borders). Climbed peaks are clickable
+// and open a rotating photo slideshow with a short story; next climbs are marked but not clickable.
 //
 // Real photos: drop them at src/assets/climbs/<peak id>-1.jpg, -2.jpg, ... (jpg or webp).
 // They replace the placeholder slides with no code changes.
-interface Peak { id: string; name: string; elevation: string; lat: number; lon: number; body: string }
-interface Props { copy: { title: string; intro: string; back: string; mapBack: string; photoNote: string; peaks: Peak[] } }
+// Relief image: node scripts/make-relief.mjs src/assets/map/relief.webp
+import relief from '../assets/map/relief.webp';
+import { VW, VH, px, py, KM, RIVERS, CITIES, RAMP, smoothPath, type LonLat } from '../data/washington';
+
+interface Peak { id: string; name: string; elevation: string; lat: number; lon: number; body?: string; next?: boolean; label?: 'below' | 'left' | 'right' }
+interface Props { copy: { title: string; intro: string; back: string; mapBack: string; photoNote: string; nextLabel: string; legend: string; peaks: Peak[] } }
 const { copy } = Astro.props;
 
 const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/climbs/*.{jpg,jpeg,webp,png}', { eager: true });
@@ -15,19 +20,36 @@ const photosFor = (id: string) =>
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
     .map(([, m]) => m.default.src);
 
-// Map frame: a lon/lat window around the three peaks, projected so 1 km is the same both ways.
-const W = -123.3, E = -120.6, S = 45.95, N = 47.05;
-const kx = Math.cos((46.5 * Math.PI) / 180);
-const VW = 1690, VH = Math.round((VW * (N - S)) / ((E - W) * kx));
-const px = (lon: number) => ((lon - W) / (E - W)) * VW;
-const py = (lat: number) => ((N - lat) / (N - S)) * VH;
-const kmPx = (VH / (N - S)) / 111.32; // pixels per km
+const peaks = copy.peaks.map((p) => ({ ...p, x: px(p.lon), y: py(p.lat), photos: p.next ? [] : photosFor(p.id) }));
+const climbed = peaks.filter((p) => !p.next);
 
-const peaks = copy.peaks.map((p) => ({ ...p, x: px(p.lon), y: py(p.lat), photos: photosFor(p.id) }));
-const gridLat = [46, 46.5, 47];
-const gridLon = [-123, -122.5, -122, -121.5, -121];
+// Borders: the Canada line (dash-dot, through the Strait) and the Idaho / Oregon lines (dashed).
+const intl: LonLat[] = [[-124.78, 48.47], [-124.0, 48.3], [-123.25, 48.24], [-123.12, 48.43], [-123.25, 48.7], [-123.0, 48.83], [-122.76, 49.0], [-116.6, 49.0]];
+const stateLines: LonLat[][] = [[[-117.03, 49.0], [-117.03, 46.42]], [[-116.92, 46.0], [-118.98, 46.0]]];
+const line = (pts: LonLat[]) => 'M' + pts.map(([lo, la]) => `${px(lo).toFixed(1)} ${py(la).toFixed(1)}`).join(' L');
+
+const gridLat = [46, 47, 48, 49];
+const gridLon = [-124, -123, -122, -121, -120, -119, -118, -117];
+
+// Region and water names (geography, not copy).
+const regions = [
+  { t: 'Pacific Ocean', lon: -124.62, lat: 46.95, cls: 'water big', rot: -90 },
+  { t: 'Strait of Juan de Fuca', lon: -123.95, lat: 48.24, cls: 'water', rot: -8 },
+  { t: 'Puget Sound', lon: -122.48, lat: 47.42, cls: 'water', rot: -70 },
+  { t: 'Olympic Mountains', lon: -123.62, lat: 47.62, cls: 'range', rot: 0 },
+  { t: 'Cascade Range', lon: -120.88, lat: 47.35, cls: 'range big', rot: -80 },
+  { t: 'Columbia Basin', lon: -118.85, lat: 47.05, cls: 'range big', rot: 0 },
+  { t: 'Canada', lon: -119.8, lat: 49.08, cls: 'country', rot: 0 },
+  { t: 'Oregon', lon: -120.2, lat: 45.55, cls: 'country', rot: 0 },
+  { t: 'Idaho', lon: -116.82, lat: 47.3, cls: 'country', rot: -90 },
+];
+
+// Legend: elevation tints in feet.
+const legend = [...RAMP].reverse().map(([m, c]) => ({ c, ft: Math.round((m * 3.28084) / 100) * 100 }));
+const kmBar = KM * 50; // 50 km
+const miBar = KM * 1.609 * 25; // 25 mi
 ---
-<div class="climbs" role="dialog" aria-modal="true" aria-label={copy.title} hidden data-peaks={JSON.stringify(peaks)} data-vw={VW} data-vh={VH}>
+<div class="climbs" role="dialog" aria-modal="true" aria-label={copy.title} hidden data-peaks={JSON.stringify(climbed)}>
   <header class="top">
     <div>
       <h2>{copy.title}</h2>
@@ -37,28 +59,48 @@ const gridLon = [-123, -122.5, -122, -121.5, -121];
   </header>
 
   <div class="map" style={`aspect-ratio: ${VW} / ${VH}`}>
+    <img class="relief" src={relief.src} width={relief.width} height={relief.height} alt="" decoding="async" />
     <svg viewBox={`0 0 ${VW} ${VH}`} aria-hidden="true">
       <g class="grid">
-        {gridLat.map((lat) => <g><path d={`M0 ${py(lat)} H${VW}`} /><text x="10" y={py(lat) - 8}>{`${lat.toFixed(1)}°N`}</text></g>)}
-        {gridLon.map((lon) => <g><path d={`M${px(lon)} 0 V${VH}`} /><text x={px(lon) + 8} y={VH - 12}>{`${Math.abs(lon).toFixed(1)}°W`}</text></g>)}
+        {gridLat.map((lat) => <g><path d={`M0 ${py(lat)} H${VW}`} /><text x="12" y={py(lat) - 8}>{`${lat}°`}</text></g>)}
+        {gridLon.map((lon) => <g><path d={`M${px(lon)} 0 V${VH}`} /><text x={px(lon) + 8} y={VH - 14}>{`${Math.abs(lon)}°`}</text></g>)}
       </g>
-      <g class="contours"></g>
-      <g class="compass" transform={`translate(${VW - 70} 70)`}>
-        <path d="M0 26 V-26 M-9 -12 L0 -28 L9 -12" />
-        <text y="-36" text-anchor="middle">N</text>
+      <g class="rivers">{RIVERS.map((r) => <path d={smoothPath(r.pts, false)} />)}</g>
+      <path class="border intl" d={line(intl)} />
+      {stateLines.map((l) => <path class="border state" d={line(l)} />)}
+      <g class="cities">
+        {CITIES.map((c) => c.capital
+          ? <g transform={`translate(${px(c.lon)} ${py(c.lat)})`}><path class="star" d="M0 -11 L3 -3 L11 -3 L4.5 2 L7 10 L0 5 L-7 10 L-4.5 2 L-11 -3 L-3 -3 Z" /><text x="14" y="5">{c.name}</text></g>
+          : <g transform={`translate(${px(c.lon)} ${py(c.lat)})`}><circle r="5" /><text x="10" y="5">{c.name}</text></g>)}
       </g>
-      <g class="scale" transform={`translate(${VW - 60 - kmPx * 20} ${VH - 50})`}>
-        <path d={`M0 0 H${kmPx * 20} M0 -6 V6 M${kmPx * 10} -4 V4 M${kmPx * 20} -6 V6`} />
-        <text x="0" y="-12">0</text>
-        <text x={kmPx * 20} y="-12" text-anchor="end">20 km</text>
+      <g class="regions">
+        {regions.map((r) => <text class={r.cls} text-anchor="middle" transform={`translate(${px(r.lon)} ${py(r.lat)}) rotate(${r.rot})`}>{r.t}</text>)}
+      </g>
+      <g class="compass" transform={`translate(${VW - 80} 90)`}>
+        <path d="M0 32 V-32 M-11 -14 L0 -34 L11 -14" />
+        <text y="-44" text-anchor="middle">N</text>
       </g>
     </svg>
 
-    {peaks.map((p) => (
-      <button type="button" class="peak" data-id={p.id} style={`left: ${(p.x / VW) * 100}%; top: ${(p.y / VH) * 100}%`}>
+    <div class="legend" aria-hidden="true">
+      <p>{copy.legend}</p>
+      <ul>{[...legend].reverse().map((l, i) => <li><span style={`background:${l.c}`}></span><em>{i % 2 ? '\u00a0' : l.ft >= 1000 ? `${(l.ft / 1000).toFixed(1).replace('.0', '')}k` : l.ft}</em></li>)}</ul>
+      <p class="unit">feet</p>
+      <div class="bars">
+        <div><i style={`width:${(kmBar / VW) * 100}cqw`}></i><b>50 km</b></div>
+        <div><i style={`width:${(miBar / VW) * 100}cqw`}></i><b>25 mi</b></div>
+      </div>
+    </div>
+
+    {peaks.map((p) => p.next ? (
+      <div class="peak next" data-side={p.label ?? 'below'} style={`left: ${(p.x / VW) * 100}%; top: ${(p.y / VH) * 100}%`} aria-label={`${p.name}, ${copy.nextLabel}`}>
+        <svg viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" class="ring" /><path d="M15 7 L22 20 H8 Z" /></svg>
+        <span class="lbl"><span class="pname">{p.name}</span><span class="pelev">{p.elevation}</span><span class="tag">{copy.nextLabel}</span></span>
+      </div>
+    ) : (
+      <button type="button" class="peak" data-id={p.id} data-side={p.label ?? 'below'} style={`left: ${(p.x / VW) * 100}%; top: ${(p.y / VH) * 100}%`}>
         <svg viewBox="0 0 20 18" aria-hidden="true"><path d="M10 1 L19 17 H1 Z" /></svg>
-        <span class="pname">{p.name}</span>
-        <span class="pelev">{p.elevation}</span>
+        <span class="lbl"><span class="pname">{p.name}</span><span class="pelev">{p.elevation}</span></span>
       </button>
     ))}
   </div>
@@ -88,22 +130,65 @@ const gridLon = [-123, -122.5, -122, -121.5, -121];
   .map-back { border: 0; padding: 4px 0; margin-bottom: 22px; }
   .back:hover { background: var(--color-accent); color: var(--color-bg); }
 
-  .map { position: relative; align-self: center; justify-self: center; width: min(100%, calc((100vh - 170px) * 1.69)); margin-top: 12px; }
-  .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .grid path { stroke: var(--color-ink); stroke-width: 1; opacity: 0.12; }
-  .grid text, .scale text, .compass text { font: 500 13px var(--font-body); fill: var(--color-muted); }
-  .contours :global(path) { fill: none; stroke: var(--color-accent); stroke-linejoin: round; }
-  .compass path, .scale path { fill: none; stroke: var(--color-ink); stroke-width: 2; stroke-linecap: round; }
+  .map { position: relative; align-self: center; justify-self: center; width: min(100%, calc((100vh - 150px) * 1.54)); margin-top: 8px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px rgb(29 34 30 / 0.15); container-type: inline-size; }
+  .relief { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .grid path { stroke: #fff; stroke-width: 1.2; opacity: 0.55; }
+  .grid text { font: 500 17px var(--font-body); fill: #4a4f4b; opacity: 0.8; }
+  .rivers path { fill: none; stroke: #4f93c9; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+  .border { fill: none; stroke: #5b5f5c; stroke-width: 3; }
+  .border.intl { stroke-dasharray: 22 8 4 8; }
+  .border.state { stroke-dasharray: 16 9; }
+  .cities circle { fill: #fff; stroke: #1d221e; stroke-width: 2.2; }
+  .cities .star { fill: #1d221e; }
+  .cities text { font: 500 19px var(--font-body); fill: #1d221e; paint-order: stroke; stroke: rgb(255 255 255 / 0.75); stroke-width: 4px; }
+  .regions text { font-family: var(--font-body); font-style: italic; letter-spacing: 0.18em; text-transform: uppercase; paint-order: stroke; stroke-width: 4px; }
+  .regions .water { fill: #2f6fa3; font-size: 19px; stroke: rgb(214 233 246 / 0.7); }
+  .regions .water.big { font-size: 30px; letter-spacing: 0.4em; }
+  .regions .range { fill: #3e3a33; font-size: 20px; stroke: rgb(255 255 255 / 0.55); }
+  .regions .range.big { font-size: 28px; letter-spacing: 0.45em; }
+  .regions .country { fill: #6b6a63; font-size: 26px; letter-spacing: 0.4em; font-style: normal; stroke: rgb(255 255 255 / 0.5); }
+  .compass path { fill: none; stroke: #1d221e; stroke-width: 3; stroke-linecap: round; }
+  .compass text { font: 500 22px var(--font-body); fill: #1d221e; }
 
-  .peak {
-    position: absolute; transform: translate(-50%, -18px); display: flex; flex-direction: column; align-items: center; gap: 2px;
-    background: none; border: 0; padding: 8px 10px; cursor: pointer; color: var(--color-ink); font: inherit; border-radius: 10px;
+  .legend {
+    position: absolute; left: 1.2%; bottom: 2.2%; padding: 7px 9px 9px; background: rgb(255 255 255 / 0.86); border: 1px solid rgb(29 34 30 / 0.15);
+    font-size: clamp(8px, 0.55vw, 10px); color: var(--color-ink);
   }
-  .peak svg { width: 22px; height: 20px; fill: var(--color-accent); stroke: var(--color-bg); stroke-width: 1.5; transition: transform 0.3s var(--ease-out); }
-  .pname { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(18px, 1.5vw, 26px); line-height: 1; background: var(--color-bg); padding: 2px 6px; }
-  .pelev { font-size: 11px; letter-spacing: 0.06em; color: var(--color-muted); background: var(--color-bg); padding: 0 6px; }
-  .peak:hover svg, .peak:focus-visible svg { transform: translateY(-3px) scale(1.15); }
+  .legend p { margin: 0 0 6px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  .legend ul { list-style: none; margin: 0; padding: 0; display: flex; }
+  .legend li { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+  .legend li span { width: clamp(13px, 1.15vw, 20px); height: 9px; }
+  .legend li em { font-style: normal; font-size: 0.9em; }
+  .legend .unit { margin: 4px 0 0; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--color-muted); }
+  .bars { margin-top: 10px; display: grid; gap: 5px; }
+  .bars div { display: flex; align-items: center; gap: 6px; }
+  .bars i { display: block; height: 5px; background: linear-gradient(90deg, #1d221e 50%, #fff 50%); border: 1px solid #1d221e; }
+  .bars b { font-weight: 500; }
+
+  /* The marker sits on the summit; the label goes below, left, or right of it. */
+  .peak {
+    position: absolute; display: flex; align-items: center; gap: 6px;
+    background: none; border: 0; padding: 4px; cursor: pointer; color: var(--color-ink); font: inherit; border-radius: 10px;
+  }
+  .peak[data-side='below'] { flex-direction: column; transform: translate(-50%, -16px); }
+  .peak[data-side='right'] { flex-direction: row; transform: translate(-16px, -50%); }
+  .peak[data-side='left'] { flex-direction: row-reverse; transform: translate(calc(-100% + 16px), -50%); }
+  .lbl { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .peak[data-side='right'] .lbl { align-items: flex-start; }
+  .peak[data-side='left'] .lbl { align-items: flex-end; }
+  .peak svg { width: 24px; height: 22px; fill: #1d221e; stroke: #fff; stroke-width: 1.6; transition: transform 0.3s var(--ease-out); }
+  .pname { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(15px, 1.25vw, 22px); line-height: 1; color: #1d221e; paint-order: stroke; -webkit-text-stroke: 0; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff; }
+  .pelev { font-size: 11px; letter-spacing: 0.06em; color: #2b2e2b; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+  .peak:hover svg, .peak:focus-visible svg { transform: translateY(-3px) scale(1.18); fill: var(--color-accent); }
   .peak:hover .pname, .peak:focus-visible .pname { color: var(--color-accent); }
+
+  /* Next climbs: hollow marker in a dashed ring, muted label, "Next up" tag. Not clickable. */
+  .peak.next { cursor: default; }
+  .peak.next svg { width: 30px; height: 26px; fill: none; stroke: var(--color-accent); stroke-width: 2; }
+  .peak.next .ring { stroke-dasharray: 3 3; fill: rgb(255 255 255 / 0.55); }
+  .peak.next .pname { color: var(--color-accent); opacity: 0.9; font-size: clamp(13px, 1.05vw, 18px); }
+  .tag { margin-top: 2px; font-size: 9px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-bg); background: var(--color-accent); border-radius: 99px; padding: 3px 7px; }
 
   .detail {
     position: absolute; inset: 120px 4.2vw 30px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 4vw; align-items: center;
@@ -130,57 +215,13 @@ const gridLon = [-123, -122.5, -122, -121.5, -121];
 </style>
 
 <script>
-  import { rng, ring } from '../scripts/contours';
+  import { rng } from '../scripts/contours';
 
   type Peak = { id: string; name: string; elevation: string; x: number; y: number; body: string; photos: string[] };
   const root = document.querySelector<HTMLElement>('.climbs')!;
   const peaks: Peak[] = JSON.parse(root.dataset.peaks!);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const note = root.querySelector('.note')!.textContent ?? '';
-
-  // Contours around each peak: more rings for higher peaks. St. Helens opens to the north,
-  // where the 1980 eruption took out the crater wall.
-  const contours = root.querySelector<SVGGElement>('.contours')!;
-  const ns = 'http://www.w3.org/2000/svg';
-  for (const p of peaks) {
-    const elev = parseInt(p.elevation.replace(/\D/g, ''), 10);
-    const count = Math.round(elev / 1100);
-    const R = rng(p.id.length * 97 + elev);
-    const shape = [0.1, R() * 6, 0.06, R() * 6, 0.04, R() * 6];
-    for (let i = 0; i < count; i++) {
-      const r = 10 + i * 13;
-      const sh = shape.map((v, k) => (k % 2 ? v + i * 0.08 : v * (1 + i * 0.06)));
-      const open = p.id === 'st-helens' && i < 4;
-      const start = open ? -Math.PI / 2 + 0.55 : 0;
-      const sweep = open ? Math.PI * 2 - 1.1 : Math.PI * 2;
-      const pts = ring(p.x, p.y, r, r * 0.86, sh, R, start, sweep, 120);
-      const d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L') + (open ? '' : ' Z');
-      const path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', d);
-      path.setAttribute('stroke-width', i % 5 === 4 ? '2.2' : '1.1');
-      path.setAttribute('opacity', String(Math.max(0.25, 0.85 - i * 0.045)));
-      contours.appendChild(path);
-    }
-  }
-
-  // Faint background terrain so the map reads as a real topo sheet.
-  const T = rng(7);
-  const vw = +root.dataset.vw!, vh = +root.dataset.vh!;
-  for (let c = 0; c < 14; c++) {
-    const cx = T() * vw, cy = T() * vh;
-    if (peaks.some((p) => Math.hypot(p.x - cx, p.y - cy) < 230)) continue;
-    const tshape = [0.14, T() * 6, 0.09, T() * 6, 0.05, T() * 6];
-    const n = 2 + Math.floor(T() * 4);
-    for (let i = 0; i < n; i++) {
-      const r = 14 + i * 16 + T() * 6;
-      const pts = ring(cx, cy, r * (0.9 + T() * 0.6), r * 0.7, tshape, T, 0, Math.PI * 2, 80);
-      const path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L') + ' Z');
-      path.setAttribute('stroke-width', '1');
-      path.setAttribute('opacity', '0.13');
-      contours.insertBefore(path, contours.firstChild);
-    }
-  }
 
   // Placeholder slide: a mountain silhouette on a Pine gradient.
   const placeholder = (peak: Peak, n: number, total: number) => {
