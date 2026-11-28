@@ -26,6 +26,12 @@
   - Keyboard: an object list at the bottom left opens each one.
   - Camera settles in on arrival at the desk; slight mouse sway at rest. Both off with reduced motion.
   - Checked at 1512x744 (Chrome, real clicks), 1440x900, and 1920x1080.
+- Scroll-in from the landing to the desk (Nov 27, 2026):
+  - Hard scroll-snap removed. The landing stays pinned while you scroll the first screen, and the room sits fixed behind it.
+  - With scroll progress, the words lift away, the photo and contour rings swell and fade, and the paper thins to show the room.
+  - The camera follows the same progress from high and far back into the desk view, and reverses when you scroll up.
+  - If you stop partway, it glides to whichever end you were heading toward.
+  - Reduced motion: no camera flight or scaling, the landing only fades.
 
 ## 3D models (Nov 27, 2026)
 - JBL Clip: done locally, not committed. `assets/models/jbl-clip.glb` (644 KB).

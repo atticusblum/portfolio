@@ -35,8 +35,12 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
 </section>
 
 <style>
-  .desk { position: relative; height: 100vh; min-height: 640px; overflow: hidden; scroll-snap-align: start; background: #e8e6dc; }
+  .desk { position: relative; height: 100vh; min-height: 640px; overflow: hidden; background: #e8e6dc; }
   .canvas, .canvas :global(canvas) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Pinned behind the landing while you scroll in; back in the section once it arrives. */
+  .canvas.pinned { position: fixed; z-index: 1; }
+  .label, .hint, .list { opacity: var(--j, 1); }
+  .desk.arriving .label, .desk.arriving .hint, .desk.arriving .list { pointer-events: none; }
 
   .label, .hint, .list a, .list button, .kind, .rotate, .close, .tip {
     font-family: var(--font-body); text-transform: uppercase; letter-spacing: 0.08em;
@@ -131,7 +135,7 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
           if (def) { tip.textContent = copy[def.id].title; tip.style.transform = `translate(${x + 16}px, ${y + 14}px)`; }
         },
       });
-      if (document.documentElement.dataset.station === 'desk') api.intro();
+      api.setJourney(journey);
       if (pending) api.select(pending);
     } catch (err) {
       console.error('[desk] 3D failed to start', err);
@@ -142,9 +146,17 @@ const list = deskObjects.filter((o) => o.clickable !== false).map((o) => ({ id: 
 
   window.addEventListener('mac:closed', () => api?.exitMac());
 
-  window.addEventListener('station:change', (e) => {
-    if ((e as CustomEvent).detail.to === 'desk') api?.intro();
+  // Scroll-in from the landing: the hero sends progress 0..1, the camera follows it.
+  let journey = 0;
+  const pin = () => canvasBox.classList.toggle('pinned', scrollY < section.offsetTop);
+  window.addEventListener('journey', (e) => {
+    journey = (e as CustomEvent<number>).detail;
+    api?.setJourney(journey);
+    pin();
+    section.style.setProperty('--j', String(Math.max(0, (journey - 0.75) / 0.25)));
+    section.classList.toggle('arriving', journey < 0.98);
   });
+  pin();
 
   buttons.forEach((b) => b.addEventListener('click', () => {
     const id = b.dataset.object!;

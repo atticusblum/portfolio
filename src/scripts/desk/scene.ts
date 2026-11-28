@@ -34,7 +34,9 @@ export type DeskOptions = {
 
 const COLORS = { wall: '#e8e6dc', floor: '#d6d2c4', desk: '#cdbfa6', deskEdge: '#b9aa8f', veil: '#eeede5' };
 const REST = { pos: new THREE.Vector3(0, 1.38, 3.3), look: new THREE.Vector3(0, 1.1, -0.5) };
-const START = { x: 0, y: 2.1, z: 4.9 };
+// Where the scroll-in starts: high and far back, looking over the room toward the wall.
+const START = { pos: new THREE.Vector3(0, 2.75, 6.4), look: new THREE.Vector3(0, 1.62, -1.0) };
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   const dur = (s: number) => (opts.reduced ? 0 : s);
@@ -449,16 +451,26 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   // Loop runs only while the desk is on screen.
   const clock = new THREE.Clock();
   let flightT = 0;
+  let journey = 1; // 1 = at the desk; the page sets it as you scroll in
+  let drewHidden = false;
   const frame = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
-    // Camera: gentle mouse sway at rest; held still while an object is presented.
+    // Hidden behind the landing page: nothing to draw until the scroll-in starts.
+    if (journey <= 0.001 && drewHidden) return;
+    drewHidden = journey <= 0.001;
+    // Camera: follows the scroll-in from START to its desk view, then a gentle mouse sway.
+    // Held still while an object is presented or the Mac is open.
     if (!selected && !inMac) {
       const k = opts.reduced ? 1 : 0.05;
-      const amt = opts.reduced ? 0 : 1;
+      const e = opts.reduced ? 1 : easeInOut(journey);
+      const amt = opts.reduced ? 0 : e;
       sway.x += (sway.tx * amt - sway.x) * k;
       sway.y += (sway.ty * amt - sway.y) * k;
-      camera.position.set(REST.pos.x + sway.x * 0.12, REST.pos.y - sway.y * 0.05, REST.pos.z + backOff);
-      camera.lookAt(REST.look);
+      const rest = new THREE.Vector3(REST.pos.x, REST.pos.y, REST.pos.z + backOff);
+      camera.position.lerpVectors(START.pos, rest, e);
+      camera.position.x += sway.x * 0.12;
+      camera.position.y -= sway.y * 0.05;
+      camera.lookAt(new THREE.Vector3().lerpVectors(START.look, REST.look, e));
     }
     // Presented object: idle sway side to side so the form reads, without turning edge-on.
     if (selected && !busy && !drag && !opts.reduced) {
@@ -498,14 +510,10 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   const io = new IntersectionObserver(([e]) => renderer.setAnimationLoop(e.isIntersecting ? frame : null));
   io.observe(container);
 
-  // Arrival: the camera settles in from higher and farther back.
-  let arrived = false;
-  const intro = () => {
-    if (arrived || opts.reduced) return;
-    arrived = true;
-    const rest = REST.pos.clone();
-    gsap.fromTo(REST.pos, START, { x: rest.x, y: rest.y, z: rest.z, duration: 1.6, ease: 'power3.out' });
-  };
+  /** Scroll progress from the landing (0) into the desk (1). Drives the camera. */
+  const setJourney = (p: number) => { journey = Math.min(1, Math.max(0, p)); };
+  // Kept for callers from before the scroll-driven arrival; the scroll now does this.
+  const intro = () => {};
 
   /** Where the Mac's screen is on the page (for the home screen to grow from). */
   const screenRect = (): DOMRect | null => {
@@ -584,6 +592,7 @@ export async function createDesk(container: HTMLElement, opts: DeskOptions) {
   }
 
   return {
+    setJourney,
     enterMac,
     exitMac,
     screenRect,
